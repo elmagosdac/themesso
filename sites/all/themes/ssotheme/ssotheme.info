@@ -16,15 +16,23 @@ features[] = node_user_picture
 features[] = comment_user_picture
 features[] = comment_user_verification
 
+; CORE REGIONS - DISABLED
+;regions[highlighted] = Highlighted
+;regions[help] = Help
+;regions[header] = Header
+;regions[footer] = Footer
+ 
+; CORE REGIONS - REQUIRED
 regions[page_top] = Page Top
-regions[header] = Header
-regions[highlighted] = Highlighted
-regions[help] = Help
 regions[content] = Content
+regions[page_bottom] = Page Bottom
+ 
+; CORE REGIONS
 regions[sidebar_first] = Sidebar First
 regions[sidebar_second] = Sidebar Second
-regions[footer] = Footer
-regions[page_bottom] = Page Bottom
+ 
+; CUSTOM REGIONS
+regions[my_custom_region] = My Custom Region
 
 version = "7.x-1.4"
 core = "7.x"
