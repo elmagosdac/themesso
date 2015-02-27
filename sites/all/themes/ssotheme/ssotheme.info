@@ -4,7 +4,7 @@ version = 1.0
 core = 7.x
 
 stylesheets[all][] = css/style.css
-stylesheets[all][] = js/js.js
+scripts[] = js/js.js
 
 features[] = logo
 features[] = name
@@ -15,6 +15,16 @@ features[] = secondary_menu
 features[] = node_user_picture
 features[] = comment_user_picture
 features[] = comment_user_verification
+
+regions[page_top] = Page Top
+regions[header] = Header
+regions[highlighted] = Highlighted
+regions[help] = Help
+regions[content] = Content
+regions[sidebar_first] = Sidebar First
+regions[sidebar_second] = Sidebar Second
+regions[footer] = Footer
+regions[page_bottom] = Page Bottom
 
 version = "7.x-1.4"
 core = "7.x"
