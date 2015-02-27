@@ -1,0 +1,294 @@
+<?php
+/**
+ *@file group_sso.module
+ *gestion de grupos del sso.
+ * 
+ *@author Sajit Avila correa
+ *@date 2014-09-20
+ */
+
+ 
+/**
+ * @brief implementacion del hook permission() 
+ * funcion que implementa los permisos de usuarios 
+ * mediante el hook permission()
+ * @author Sajit Avila Correa
+ * @date 2014-10-10
+ * 
+ */
+  
+function group_sso_permission() {
+  return array(
+	'group_sso permission' => array(
+		'title'=>t('Aministración de Permisos para grupos SSO'),
+		'description' => t('Sección para la administracion de los permisos de los grupos')
+	),
+	'access group_sso content' => array(
+		'title'=>t('Acceso a contendio para grupos SSO'),
+	),	
+  );
+}
+
+/** @brief Implementa hook editar()
+ * Pagina que invoca la pantalla de Edicion de usuario
+ * 
+ * @author Sajit Avila Correa
+ * @date 2014-12-03
+*/
+
+function group_sso_menu(){
+	$items=array();
+	$items['group-sso']=array(
+	 'title'=>'Administacion de Grupos',
+	 'page callback' => 'group_sso_list',
+     'access arguments' => array('access group_sso content'),
+	);
+	
+	$items['group-sso/new'] = array(
+	    'title' => 'Nuevo',
+	    'page callback' => 'group_edit_new',
+	    // 'page callback' => 'drupal_get_form',
+	    // 'page arguments' => array('form_carga_user_new'),
+	    'access arguments' => array('access administration pages '),
+	    'access callback' => TRUE,
+	    'file' => 'group_sso_form.inc',
+	    'type' => MENU_CALLBACK, 			
+	);
+	
+	$items['group-sso/edit'] = array(
+	    'title' => 'Editar',
+	    'page callback' => 'group_sso_edit',
+	    //'page callback' => 'drupal_get_form',
+	    //'page arguments' => array('form_carga_user_edit'),
+	    'access arguments' => array('access administration pages'),
+	    'access callback' => TRUE,
+	    'file' => 'group_sso_form.inc',
+	    'type' => MENU_CALLBACK, 		
+	);
+	
+	$items['group-sso/del'] = array(
+	    'title' => 'del',
+	    'page callback' => 'group_sso_del',
+	    //'page callback' => 'drupal_get_form',
+	    //'page arguments' => array('form_carga_user_edit'),
+	    'access arguments' => array('access administration pages'),
+	    'access callback' => TRUE,
+	    'type' => MENU_CALLBACK, 		
+	);
+
+  $form['submit']=array(
+    '#type' => 'submit',
+    '#value' => 'Genera',  
+  );
+	return $items;
+}
+
+/** @brief Implementa hook editar()
+ * Pagina que invoca la pantalla de Edicion de usuario
+ * 
+ * @author Sajit Avila Correa
+ * @date 2014-12-03
+*/
+
+function group_sso_list(){
+	global $user;
+	$grupos = group_sso_get();	
+	$getAccount = get_levelsAcademy($user->idaccount);
+	$variables = array(
+		'titulo' => 'Administracion de Grupos',
+		'grupos' => $grupos,
+		'escuela' => $getAccount,
+	);
+	
+	return theme('group_sso_list', $variables);
+}
+
+/**@brief group_sso_get()
+ * funcion para obtener los grupos o un grupo en específico 
+ * 
+ * @author Sajit Avila
+ * @date 2014-12-03
+*/
+
+function group_sso_get($id = null){
+	$query = db_query("select * from sso_groups where gid LIKE '%$id'")->fetchAll();
+	return $query;
+}
+
+/** @brief Implementa hook editar()
+ * Pagina que invoca la pantalla de Edicion de usuario
+ * 
+ * @author Sajit Avila Correa
+ * @date 2014-12-03
+*/
+
+function group_edit_new(){
+	if($_POST){
+		$r = form_carga_group_new_submit(null,$_POST);
+		if($r){
+			echo json_encode(array('code'=>200,'mensaje'=>'El grupo se guardo correctamente'));
+		}else{
+			echo json_encode(array('code'=>400,'mensaje'=>'Error al guardar el grupo'));
+		}
+	}else{
+		global $user;
+		$elform = drupal_get_form('form_carga_group_new');
+		$niveles = get_levelsAcademy($user->idaccount);
+		$niveles = explode(',',$niveles[0]->level);
+		$variables = array(
+			'titulo' => 'Alta de Grupo',
+			'form' => $elform,
+			'niveles'=>$niveles
+		);
+		return theme('group_sso_new', $variables);
+	}
+}
+
+/** @brief Implementa hook editar()
+ * Pagina que invoca la pantalla de Edicion de usuario
+ * 
+ * @author Sajit Avila Correa
+ * @date 2014-12-03
+*/
+
+function group_sso_edit($data){
+	if(!$_POST){
+		$elform = drupal_get_form('form_carga_group_edit',$data);
+		$variables = array(
+			'titulo' => 'Edicion de Grupo',
+			'form' => $elform,
+		);
+		return theme('group_sso_edit', $variables);
+	}else{
+		$r = form_carga_group_edit_submit(null,$_POST);
+		if($r){
+			echo json_encode(array('code'=>200,'mensaje'=>'El grupo se edito correctamente'));
+		}else{
+			echo json_encode(array('code'=>400,'mensaje'=>'Error al editar el grupo'));
+		}
+	}
+	
+	
+}
+
+/** @brief group_sso_del()
+ * funcion para desactivar un registro de la base de datos
+ * @author Sajit Avila Correa
+ * @date 2014-12-10
+*/
+
+function group_sso_del($gid){
+	$result = db_update('sso_groups')
+	->fields(
+		array(
+	    	'active'=>0,
+		)
+	)
+	->condition('gid',$gid)
+	->execute();
+	
+	if($result){
+		echo 'TRUE';
+	}else{
+		echo 'FALSE';
+	}
+}
+
+/** @brief Implementa hook theme()
+ * funcion para invocar los templates generados.
+ * 
+ * @author Sajit Avila Correa
+ * @date 2014-11-19
+ */
+function group_sso_theme() {
+  return array(
+    'group_sso_edit' => array(
+      'template' => 'group_sso_edit',
+    ),
+    'group_sso_new' => array(
+      'template' => 'group_sso_new',
+    ),
+    'group_sso_list'=>array(
+	  'template' => 'group_sso_list',
+	),
+  );
+}
+
+
+/**@brief escuelas_sso_catalogo()
+ * funcion para obtener todas las escuelas
+ * 
+ * @author Sajit Avila
+ * @date 2014-12-03
+*/
+ 
+function escuelas_sso_catalogo(){
+ 	$escuelas = array(1=> 'escuela1', 2=>'escuela2', 3=>'escuela3');
+ 	return $escuelas;
+}
+
+/**@brief niveles_sso_catalogo()
+ * funcion para obtener todas los niveles
+ * 
+ * @author Sajit Avila
+ * @date 2014-12-03
+*/
+
+function niveles_sso_catalogo(){
+	$niveles = array(1=>'primaria',2=>'secundaria',3=>'bachillerato');
+	return $niveles;
+}
+
+/**@brief grados_sso_catalogo()
+ * funcion para obtener todas los grados
+ * 
+ * @author Sajit Avila
+ * @date 2014-12-03
+*/
+
+function grados_sso_catalogo($level){
+	switch($level){
+		case '1':
+			$grados = array(1,2,3);
+			break;
+		case '2':
+			$grados = array(1,2,3,4,5,6);
+			break;
+		case '3':
+			$grados = array(1,2,3);
+			break;
+		case '4':
+			$grados = array(1,2,3);
+			break;
+	}
+
+	return $grados;
+	
+}
+
+/**@brief profesores_sso_catalogo()
+ * funcion para obtener usuarios con rol de profesores
+ * 
+ * @author Sajit Avila
+ * @date 2014-12-03
+*/
+
+function profesores_sso_catalogo(){
+	$profesores = db_query('SELECT u.uid, u.fullname, ur.uid, ur.rid,u.mail from {users} u left join {users_roles} ur ON ur.uid = u.uid where ur.rid = 5')->fetchAll();
+	return $profesores;
+}
+
+
+function get_levelsAcademy($accauntid){
+	$client = new SoapClient('http://ws.smit.com.mx/xrm/xrmservice.asmx?wsdl',array('soap_version' => SOAP_1_2));
+	$data=array(
+  		"accountid" => @$accauntid,
+  		"username" => 'Denumeris',
+  		"password" => 'D3num3r1s'
+  	);
+	
+	$result =  $client->__call('GetAccountInfo',array($data));
+	$result = json_decode($result->GetAccountInfoResult);
+
+	return $result;
+}

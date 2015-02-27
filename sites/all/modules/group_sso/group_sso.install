@@ -1,0 +1,114 @@
+<?php
+/**
+ * @file
+ * Install, update and uninstall functions for the group sso module.
+ */
+/**
+ * @brief Implements hook_schema().
+ * 
+ * Funcion que crea la tabla de grupos durante la instalación del modulo
+ * 
+ * @author sajit avila
+ * @date 2014-12-08
+ */
+
+function group_sso_schema() {
+	$schema['sso_groups'] = array(
+		'description' => 'Tabla para grupos.',
+		'fields' => array(
+		  	'gid' => array(
+		    	'description' => 'identificador primario para los grupos.',
+		    	'type' => 'serial',
+		    	'not null' => TRUE
+			),
+			
+			'groups' => array(
+			    'description' => 'Nombre del grupo.',
+			    'type' => 'varchar',
+			    'length' => 240,
+			    'default' => '',
+		  	),
+		  	
+			'college' => array(
+			    'description' => 'identificador de escuela asignada.',
+			    'type' => 'varchar',
+			    'length' => 250,
+			    'not null' => FALSE,
+			    'default' => 0,
+		  	),
+		  
+		  	'level' => array(
+			    'description' => 'identificador de nivel .',
+			    'type' => 'int',
+			    'not null' => FALSE,
+			    'default' => 0,
+		  	),
+		  
+		  	'grade' => array(
+			    'description' => 'identificador del grado .',
+			    'type' => 'int',
+			    'not null' => FALSE,
+			    'default' => 0,
+		  	),
+		  	
+			'active' => array(
+			    'description' => 'identificador del status del registro activo/inactiv.',
+			    'type' => 'int',
+			    'not null' => FALSE,
+			    'default' => 0,
+		  	)
+		),
+
+		'unique keys' => array(
+			'gid'     => array('gid')
+		),
+		
+		'primary key' => array('gid'),
+		'index' => array(
+			'gid'=>array('uid')
+		)
+	);
+	
+	$schema['sso_groups_user'] = array(
+		'description' => 'Tabla para relacion de usuario y grupos.',
+		'fields' => array(
+		  	'guid' => array(
+		    	'description' => 'identificador primario para la relacion de grupos.',
+		    	'type' => 'serial',
+		    	'not null' => TRUE
+			),
+			
+		  	'gid' => array(
+			    'description' => 'identificador del grupo .',
+			    'type' => 'int',
+			    'not null' => FALSE,
+			    'default' => 0,
+		  	),
+		  	
+			'uid' => array(
+			    'description' => 'identificador del usuario .',
+			    'type' => 'int',
+			    'not null' => FALSE,
+			    'default' => 0,
+		  	),
+		),
+
+		'unique keys' => array(
+			'guid'     => array('guid')
+		),
+		
+		'primary key' => array('guid'),
+		'index' => array(
+			'guid'=>array('guid')
+		)
+	);
+  return $schema;
+}
+
+function group_sso_install() {
+  	// drupal_install_schema('group_sso');
+}
+
+function group_sso_uninstall() {
+	drupal_uninstall_schema('group_sso');
+}

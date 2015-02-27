@@ -1,0 +1,5 @@
+name = Token sso
+description = Modulo para generar los tokens de los para los libros y usuarios anomimos.
+version = 1.0
+package = SSO
+core = 7.x

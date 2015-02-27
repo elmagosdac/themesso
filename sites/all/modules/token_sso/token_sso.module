@@ -1,0 +1,465 @@
+<?php
+
+/**
+ * @file token_sso.module
+ * Modulo para la generacion, descarga y activacion de tokens.
+ * 
+  * @author Miguel Angel Chávez Obregón
+  * @date 2014-09-20
+ */
+
+ 
+  /** @brief Implements hook_permission().
+ */
+function token_sso_permission() {
+  return array(
+	'token_sso permission' => array(
+		'title'=>t('Aministración de Permisos para Token SSO'),
+		'description' => t('Sección para la administracion de los permisos de los tokens')
+	),
+	'access token_sso content' => array(
+		'title'=>t('Acceso a contendio para Token SSO'),
+	),	
+  );
+}
+
+
+ /**@brief implementacion del hook menu() 
+  * funcion que implementa los 
+  * diferentes menus dentro del sistema 
+  * mediante el hook menu()
+  * @author Miguel Angel Chávez Obregón
+  * @date 2014-09-20
+  * 
+ */
+ function token_sso_menu() {
+     
+  $items=array();
+
+  $items['token-sso']=array( 
+    'title' => 'Tokens para libros',
+    'page callback' => 'token_sso_intro',
+    'access arguments' => array('access token_sso content'),
+  );
+  
+  $items['token-sso/genera']=array( 
+    'title' => 'Tokens para libros',
+    'page callback' => 'token_sso_generar',
+    'access callback' => TRUE,
+    'file' => 'token_sso_form.inc',
+    'type' => MENU_NORMAL_ITEM, 
+  );
+  
+  $items['token-sso/valida']=array(
+    'title' => 'Valida Tokens',
+    'page callback' => 'token_sso_valida_callback',
+   // 'page callback' => 'drupal_get_form',
+    //'page arguments' => array('form_valida_token'),
+    'access callback' => TRUE,
+    'file' => 'token_sso_form.inc',
+    'type' => MENU_NORMAL_ITEM, 
+  );  
+  
+   $items['qr']=array(
+    'title' => 'Valida Tokens',
+    //'page callback' => 'token_sso_valida_callback',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('form_token_qr'),
+    'access callback' => TRUE,
+    'file' => 'token_sso_form.inc',
+    'type' => MENU_NORMAL_ITEM, 
+    'weith'=>-1
+  ); 
+  
+   $items['token-sso/descarga']=array(
+    'title' => 'Descarga Lista de Tokens',
+    'page callback' => 'token_sso_descarga_callback',
+    //'page callback' => 'drupal_get_form',
+    //'page arguments' => array('form_genera_cvs_token'),
+    'access callback' => TRUE,
+    'file' => 'token_sso_form.inc',
+    'type' => MENU_NORMAL_ITEM, 
+  ); 
+  
+     $items['token-sso/carga']=array(
+    'title' => 'Carga masiva de tokens',
+    'page callback' => 'token_sso_carga_callback',
+    //'page callback' => 'drupal_get_form',
+    //'page arguments' => array('form_carga_token'),
+    'access arguments' => array('access administration pages'),
+    'access callback' => TRUE,
+    'file' => 'token_sso_form.inc',
+    'type' => MENU_NORMAL_ITEM, 
+  ); 
+  
+  $items['token-sso/recupera/%']=array(
+    'title' => 'Recupera lista de tokens',
+    'page callback' => 'token_sso_recuperaLista',
+    'page arguments' => array(2),
+    'access arguments' => array('access arguments page'),
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK,   
+  );
+
+  return $items;
+}
+
+function token_sso_carga_callback(){
+	$elform = drupal_get_form('form_carga_token');
+	$variables = array(
+		'form'=>$elform,
+	);
+	return theme('token_sso_masiva_tmp',$variables);
+}
+/** 
+ * @brief Implementa hook intro()
+ * Pagina que invoca la pantalla inicial del modulo
+ * 
+ * @author Miguel Angel Chávez Obregón
+ * @date 2014-09-20
+ */
+function token_sso_intro() {
+  $markup = t('Formulario para generar tokens');
+  return array('#markup' => $markup);
+} 
+
+/** @brief Implementa hook agregar()
+ * Pagina que invoca la pantalla de generacion de token
+ * 
+ * @author Sajit Avila Correa
+ * @date 2014-10-20
+ */
+function token_sso_generar() {
+	$elform = drupal_get_form('form_crea_token');
+    $variables = array(
+    	'titulo' => 'Lista de profesores',
+    	'form' => $elform,
+    );
+  	
+  	return theme('token_sso_generar', $variables);
+}
+
+function token_sso_descarga_callback(){
+	$elform = drupal_get_form('form_genera_cvs_token');
+	$variables = array(
+		'form'=>$elform,
+	);
+	return theme('token_sso_descarga',$variables);	
+}
+
+function token_sso_valida_callback(){
+	$elform = drupal_get_form('form_valida_token');
+	$variables = array(
+		'form'=>$elform,
+	);
+	return theme('token_sso_valida',$variables);	
+}
+
+/** @brief Implementa hook theme()
+ * funcin para invocar los templates generados.
+ * 
+ * @author Sajit Avila Correa
+ * @date 2014-10-20
+ */
+function token_sso_theme() {
+  return array(
+    'token_sso_generar' => array(
+      'template' => 'token_sso_generar',
+    ),
+    'token_sso_valida' => array(
+		'template' => 'token_sso_valida'
+	),
+    'token_sso_descarga' => array(
+		'template'=>'token_sso_descarga',
+	),
+	'token_sso_masiva_tmp' => array(
+		'template' => 'token_sso_masiva_tmp'
+	),
+  );
+}
+
+/** @brief Implementa hook_cat_applications
+ * 
+ * Hook para implementar el llenado del combo de aplicaciones.
+ * 
+ * @author Miguel Angel Chávez Obregón
+ * @date 2014-09-20
+ */
+function token_sso_cat_application() {
+
+  $data=array();
+  $qry = db_query('select n.id_application, n.application
+  	from {sso_cat_applications} n where status=1');
+
+  foreach ($qry as $result) {
+    $data[$result->id_application] = t($result->application);
+  }
+
+  return $data;
+}
+
+/** 
+ * @brief  Implementa hook_add_cat_applications
+ * Hook para insertar nuevas aplicaciones.
+ * 
+ * @author Miguel Angel Chávez Obregón
+ * @date 2014-09-20
+ */
+function token_sso_add_cat_application() {
+  db_insert('sso_cat_applications')
+    ->fields(array(
+        'application' => $application,
+        'url' => $url,
+        'status' => 1,
+  ))->execute();
+}
+
+/** 
+ * @brief Implementa hook__delete_cat_applications
+ * 
+ * Hook para insertar nuevas aplicaciones.
+ * 
+ * @author Miguel Angel Chávez Obregón
+ * @date 2014-09-20
+ */
+ function token_sso_delete_cat_application() {
+   db_update('sso_cat_applications')
+    ->fields(array(
+      'status' => 0
+  ))->execute();
+ }
+
+/** 
+ * @brief Implementa hook_sso_insert_token
+ * 
+ * Hook para insertar tokens generados a 
+ * peticion del usuario.
+ * 
+ * @param $args variable que contiene el arreglo con los tokens creados
+ * 
+ * @author Miguel Angel Chávez Obregón
+ * @date 2014-09-20
+ */
+ function sso_insert_token($args) {
+     
+  $qry = db_insert('sso_token')->fields(array('token', 'status', 'isbn', 'id_product', 'id_application', 'application_url', 'permanent','created'));
+    foreach ($args as $data) {
+      $qry->values($data);
+    }
+  $qry->execute();
+
+ }
+ 
+ 
+/** @brief Implementa hook_token_sso_valida_token
+ * 
+ * Hook para validar el token que el usuario ingresa.
+ * 
+ * @param $arg variable que trae el valor del token a ser validado
+ * @return $data arreglo que retorna el valor del resultado de la operacion*
+ * 
+ * @author Miguel Angel Chávez Obregón
+ * @date 2014-09-20
+ */
+ function token_sso_valida_token($arg) {
+    global $user;
+     /** $qry <var variable que se almacena el resultado de la consulta */
+    $qry = db_query("Select count(n.token) as token, n.id_product, n.status, n.id_application from {sso_token} n where n.token ='". $arg ."'"); 
+
+    foreach ($qry as $rest) {
+    
+      if($rest->token == 1) {
+        switch ($rest->status) {
+          case '0':   /** < En caso de que el token este generado pero no se alla 
+                             * liberado para producción se regresara el status de no liberado*/
+				$data=array(
+					'result'=>100,
+					'msg'=>'Token no liberado'
+				);
+				$bitacora ="El token ".$arg."aun no esta liberado y se trato de activar";
+				bitacora_sso_operation($bitacora,'Token'); 
+				break;
+				
+          case '3': /** < En caso de que el token este generado se alla liberado para produción se regresara el status de activado*/
+
+               db_update('sso_token') 
+               ->fields(array('status'=>6))
+               ->condition('token',$arg,'=') 
+               ->execute();
+			   
+		  	   db_update('sso_user_token_app')
+				->fields(array(
+					'uid'=>(int) $user->uid,
+					'id_token'=>(int) $rest->token,
+					'id_application'=>(int) $rest->id_application
+				))->execute();
+				
+				$data=array(
+					'result'=>200,
+					'msg'=>'Token Activado'
+				);		
+				$bitacora ="El token ".$arg." Ya esta Liberado y asigando en sso";
+				bitacora_sso_operation($bitacora,'Token'); 
+				
+				$result = wsAsignarLibros($user->uid,$rest->id_product);	
+				
+				$data = json_decode($result);
+				
+				$msg ="El resultado de Conecta es ".$data['code']." ".$data['message'];
+				bitacora_sso_operation($msg,'Token'); 
+				break;
+					
+				case '6': /** < En caso de que el token este generado se alla liberado para produción y posteriormente registrado devolvera un status de liberado previamente*/
+					$msg ="El token ".$arg." ya liberado previamente";
+					$data=array(
+						'result'=>300,
+						'msg'=>$msg
+					);	
+					
+					bitacora_sso_operation($msg,'Token'); 				
+					break;
+			}
+			
+			
+		} elseif($rest->token == 0) {
+		    /** < En caso de que el token no exista se manda el status de no existes*/
+		    $msg ="El token ".$arg." No existe";
+					$data=array(
+						'result'=>400,
+						'msg'=>$msg
+					);	
+			
+				bitacora_sso_operation($msg,'Token'); 				
+		}
+   }
+
+	return $data;
+ }
+
+ /**@brief _proccess_token_books
+  * 
+  *Funcion que realiza la generaracion de tokens,
+  * la validacion de la base y el ingreso de los mismos
+  * 
+  * @param $num es el numero de tokens solicitados
+  * @param $isbn clave isbn de libro enviado para hacer los tokens
+  * @param $idInterno clave interna del libro
+  * @param $permanent en caso de ser un libro que la clave no tenga caducidad este parametro es requerido
+  * @param $application la clave de la aplicacion relacionada al libro
+  * @return $data es la respuesta del final del proceso
+  * 
+ * @author Miguel Angel Chávez Obregón
+ * @date 2014-10-28
+  */
+  function _proccess_token_books($num, $isbn, $idInterno, $application, $permanent) {
+  	global $user;
+  	
+	$ins = db_insert('sso_procesa_token')
+	->fields(array('isbn'=>$isbn,
+				   'idInterno'=>$idInterno,
+				   'amount'=>$num,
+				   'permanent'=>$permanent,
+				   'id_application'=>$application,
+				   'mail'=>$user->mail,)
+				   )
+	->execute();
+  }
+
+ 
+ /** @brief Implementa hook_token_sso_descarga
+ * 
+ * Hook que genera el proceso de creacion del archivo cvs, 
+ * 
+ * @param $fielname variable que trae el valor del ISBN a buscar
+ * @return regresa el file con los datos Token y url para realizar el QR
+ * 
+ * @author Miguel Angel Chávez Obregón
+ * @date 2014-09-20
+ */
+ function token_sso_descarga($data) {
+ 	
+	$filename=$data['filename'].'-'.$data['application'].'-'.$data['anio'].'-'.$data['mes'].'-'.$data['dia'];
+	$path = 'sites/default/files/tokens/';
+ 	$ruta='sites/default/files/tokens/'.$fielname.'.csv';
+
+	if(!file_exists($ruta))
+	{
+		$sql = "select max(isbn) as isbn, status from sso_procesa_token where isbn=".$data['fielname'];
+		
+		$resul_procesa =  db_query($sql);
+		
+		foreach ($resul_procesa as $row) {
+			if($row->status == '0'){
+				$msg="La generacion de sus tokens relacionados al ISBN ".$data['fielname']." estan en proceso de generacion";
+				drupal_set_message($msg,'status');
+				
+			}elseif($row->status == '3'){
+				$msg="El ISBN ".$data['fielname']." Ya fue procesado, la fecha de creación esta erronea";
+				drupal_set_message($msg,'status');
+	
+			}elseif($row->status == ''){
+				$msg="El ISBN ".$data['fielname']." NO ese encuentra en la lista de procesados";
+				drupal_set_message($msg,'warning');
+			}
+							
+		  bitacora_sso_operation(t($msg),'Token'); 
+		}
+		
+		
+	}elseif(file_exists($ruta))
+	{
+		$file =$fielname.'-'.date('Y-m-d').'.csv';
+		$msg = "Recuperando la lista ".$file;
+	    bitacora_sso_operation(t($msg),'Token'); 
+		token_sso_recuperaLista($file);
+	}
+
+ }
+
+ function token_sso_recuperaLista($arg){
+
+ 	$qry = "Select status from sso_registra_descarga where file='".$arg."'";
+ 	$result = db_query($qry);
+	
+	foreach($result as $record){
+		if($record['status']==''){
+			
+			db_update(sso_registra_descarga)
+			->fields(array('status' => 1))
+			->condition('file',$arg,'=')
+			->execute();
+		}else{
+			
+			$msg = 'Ya fue previamente descargado y se va volver a descargar '.$arg;
+			echo"<script>alert('".$msg."')</script>";
+		}
+
+	    bitacora_sso_operation(t($msg),'Token'); 
+	}
+	
+	$ruta='sites/default/files/tokens/'.$arg;
+	//echo "<pre>".print_r($ruta)."</pre>".die();
+ 
+  	if(file_exists($ruta))
+	{
+
+      drupal_add_http_header('Pragma', 'public');
+      drupal_add_http_header('Expires', '0');
+      drupal_add_http_header('Cache-Control', 'must-revalidate, post-check=0, pre-check=0');
+      drupal_add_http_header('Content-Type', 'application/vnd.ms-excel');
+      drupal_add_http_header('Content-Disposition', 'attachment; filename=' . basename($ruta) . ';');
+      drupal_add_http_header('Content-Transfer-Encoding', 'binary');
+      drupal_add_http_header('Content-Length', filesize($ruta));
+      readfile($ruta);
+
+		$msg = 'Se descargo '.$arg;
+	    bitacora_sso_operation(t($msg),'Token'); 	  
+      drupal_exit();	
+	        
+     }else{
+     	$msg = 'No existe el archivo indicado '.$arg;
+	    bitacora_sso_operation(t($msg),'Token'); 	
+	    
+		echo"<script>alert('".$msg."')</script>";
+     }
+ }

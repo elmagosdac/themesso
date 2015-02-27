@@ -1,0 +1,19 @@
+ALTER TABLE `users` ADD `apps` VARCHAR(200) NOT NULL ;
+
+CREATE TABLE IF NOT EXISTS `sso_user_token_app` (
+  `id_user_license_app` int(11) NOT NULL AUTO_INCREMENT,
+  `id_user` int(11) NOT NULL,
+  `id_token` int(11) NOT NULL,
+  `id_application` int(2) NOT NULL,
+  `dActivation` date DEFAULT NULL,
+  `status` int(2) DEFAULT NULL,
+  PRIMARY KEY (`id_user_license_app`)
+) ENGINE=InnoDB  DEFAULT CHARSET=latin1;
+
+
+INSERT INTO `sso_user_token_app` (`id_user_license_app`, `id_user`, `id_token`, `id_application`, `dActivation`, `status`) VALUES
+(1, 2, 1, 1, NULL, NULL),
+(2, 2, 2, 2, NULL, NULL),
+(3, 1, 4, 2, NULL, NULL),
+(4, 1, 5, 2, NULL, NULL);
+

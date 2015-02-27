@@ -1,0 +1,596 @@
+<?php
+
+/**
+ * @file token_sso.module
+ * Modulo para la generacion, descarga y activacion de tokens.
+ * 
+  * @author Miguel Angel Chávez Obregón
+  * @date 2014-09-20
+ */
+
+ 
+  /** @brief Implements hook_permission().
+ */
+function user_sso_permission() {
+  return array(
+	'user_sso permission' => array(
+		'title'=>t('Aministración de Permisos para Usuario SSO'),
+		'description' => t('Sección para la administracion de los permisos de los usuarios')
+	),
+	'access user_sso content' => array(
+		'title'=>t('Acceso a contendio para User SSO'),
+	),	
+  );
+}
+
+ 
+ /** @brief user_sso_menu_hook()
+ * constructor del menu.
+ * 
+ * @author Miguel Angel
+ * @date 2014-11-06
+*/
+
+function user_sso_menu(){
+	
+	$items=array();
+	
+	$items['user-sso']=array(
+	 'title'=>'Administacion de Usuarios',
+	 'page callback' => 'user_sso_intro',
+     'access arguments' => array('access user_sso content'),
+     'access callback' => TRUE,
+	 'file' => 'user_sso_form.inc',
+	);
+	
+	$items['user-sso/new'] = array(
+	    'title' => 'Nuevo',
+	    'page callback' => 'user_edit_new',
+	    'access arguments' => array('access administration pages'),
+	    'access callback' => TRUE,
+	    'file' => 'user_sso_form.inc',
+	    'type' => MENU_NORMAL_ITEM, 			
+	);
+	
+	$items['user-sso/edit'] = array(
+	    'title' => 'Editar',
+	    'page callback' => 'user_sso_edit',
+	    'access arguments' => array('access administration pages'),
+	    'access callback' => TRUE,
+	    'file' => 'user_sso_form.inc',
+	    'type' => MENU_NORMAL_ITEM, 		
+	);
+	
+	$items['user-sso/carga-masiva'] = array(
+	    'title' => 'Carga por CSV',
+	    'page callback' => 'user_sso_csv',
+	    'access arguments' => array('access administration pages'),
+	    'access callback' => TRUE,
+	    'file' => 'user_sso_form.inc',
+	    'type' => MENU_NORMAL_ITEM, 	
+	);
+	
+	$items['user-sso/preload-list'] = array(
+	    'title' => 'preload',
+	    'page callback' => 'user_sso_csv_preload',
+	    'access arguments' => array('access administration pages'),
+	    'access callback' => TRUE,
+	    'type' => MENU_CALLBACK, 	
+	);
+	
+	$items['user-sso/soapajax'] = array(
+	    'title' => 'soapajax',
+	    'page callback' => 'user_sso_soapajax',
+	    'access arguments' => array('access administration pages'),
+	    'access callback' => TRUE,
+	    'type' => MENU_CALLBACK, 		
+	);
+	
+	$items['user-sso/existrow']=array(
+	 'title'=>'User exist row',
+	 'page callback' => 'user_exist_row',
+     'access arguments' => array('access user_sso content'),
+     'type' => MENU_CALLBACK,
+	);
+	
+	$items['user-sso/validarmail']=array(
+	 'title'=>'User validator mail',
+	 'page callback' => 'user_emailvalidate',
+     'access arguments' => array('access user_sso content'),
+     'type' => MENU_CALLBACK,
+	);
+	
+	$items['user-sso/usersearch']=array(
+	 'title'=>'User search',
+	 'page callback' => 'user_sso_search',
+     'access arguments' => array('access user_sso content'),
+     'type' => MENU_CALLBACK,
+	);
+	
+	return $items;
+}
+
+function user_sso_search(){
+	$string = $_POST['string'];
+	$find = db_query("select * from {users} where name LIKE '%$string'")->fetchAll();
+	$find = json_encode($find);
+	echo $find;
+}
+
+function user_emailvalidate(){
+	$result= _validate_dominio($_POST['mail']);
+	echo json_encode($result);
+}
+
+ /** @brief ws_soapajax()
+ * Funcion para hacer llamado SOAP para AJAX.
+ * 
+ * @author Sajit Avila
+ * @date 2015-01-13
+*/
+
+function user_sso_soapajax(){
+	$licence = _exist_license($_POST['contactid']);
+	
+	if($licence == TRUE || $_POST['accountid']){
+		$client = new SoapClient('http://ws.smit.com.mx/xrm/xrmservice.asmx?wsdl',array('soap_version' => SOAP_1_2));
+		switch ($_POST['method']) {
+			case 'GetContact':
+			  	$data=array(
+			  		contactid => $_POST['contactid'],
+			  		username => $_POST['username'],
+			  		password => $_POST['password']
+			  	);
+			  
+				break;
+			case 'GetAccountInfo':
+				$data=array(
+			  		accountid => $_POST['accountid'],
+			  		username => $_POST['username'],
+			  		password => $_POST['password']
+			  	);
+				
+				break;
+				
+		}
+	
+  		$result = $client->__call($_POST['method'],array($data));
+  	
+  		echo json_encode($result);
+	}else{
+		echo json_encode(array( 'error' => 'La licencia ya a sido utilizada previamente'));
+	}
+	
+}
+
+ /** @brief csv_preload()
+ * constructor de preload y validador de cvs.
+ *
+ * @author Sajit Avila
+ * @date 2015-01-12
+*/
+
+function user_sso_csv_preload($delimiter){
+	$cont = 0;
+	if (($fichero = fopen($_FILES['file-0']['tmp_name'], "r")) !== FALSE) {
+		$tabla = '<table class="l_tab_prev">';
+		$q = 0;
+		$first = 0;
+	    $t=0;
+	    while (($datos = fgetcsv($fichero, 1000,$delimiter)) !== FALSE) {
+	    		
+	    	if($first < 1){
+		    	foreach($datos as $d){
+		    		$q++;
+		    	}
+				$first++;
+				$count = $q;
+	    	}
+			$i = 0;
+			$tabla.='<tr>';
+			$mail = 0;
+	        while($i < $count ){
+				$error = 0;
+	        	$bgcolor=0;
+	        	$tabla.='<td class="'.@$bgcolor.'">'.$datos[$i].'</td>';
+				$i++;
+	        }
+			$t++;
+
+			$tabla.='</tr>';
+		}
+		$tabla.='<table>';
+		echo $tabla;
+	}
+}
+
+ /** @brief count_matricula()
+ * consultor de matricula.
+ * 
+ * @author Sajit Avila
+ * @date 2015-01-12
+*/
+
+function count_matricula($matricula){
+	$a = db_query("select * from {users} where matricula = $matricula")->rowCount();
+	echo $a;
+}
+
+/** 
+ * @brief Implementa hook carga_masiva()
+ * Pagina que invoca la pantalla inicial del modulo
+ * 
+ * @author Miguel Angel Chávez Obregón
+ * @date 2014-09-20
+ */
+function user_sso_csv(){
+	$elform = drupal_get_form('form_carga_user_csv');
+	$variables = array(
+		'titulo' => 'Edicion de Usuario',
+		'form' => $elform,
+	);
+	
+	return theme('user_sso_csv', $variables);
+} 
+
+/** 
+ * @brief Implementa hook intro()
+ * Pagina que invoca la pantalla inicial del modulo
+ * 
+ * @author Miguel Angel Chávez Obregón
+ * @date 2014-09-20
+ */
+function user_sso_intro($pagina=null){
+ 	$usuarios = user_get_list_all();
+	$form = drupal_get_form('form_carga_user_new');
+	$mass = drupal_get_form('form_carga_user_csv');
+	$variables = array(
+		'titulo' => 'Edicion de Usuario',
+		'usuarios' => $usuarios,
+		'formnew' => $form,
+		'formass' => $mass
+	);
+	
+	return theme('user_sso_list', $variables);
+} 
+
+/** @brief user_sso_cmbo_role()
+ * funcion para construir el arreglo de roles que existen en el sistema.
+ * 
+ * @author Miguel Angel
+ * @date 2014-11-13
+*/
+
+function user_sso_cmbo_role($rid=NULL){
+	//$data['0']="--Seleccione--";
+	
+	$sql = db_query("Select rid,name from {role} ");
+
+	foreach($sql as $row){
+		if($row->rid == 1 || $row->rid == 2 ){
+			
+		}else{
+			$data[$row->rid] = $row->name;
+		}
+	}
+ return $data;	
+}
+
+function user_sso_cmbo_apps(){
+	//$data['0']="--Seleccione--";
+	
+	$sql = db_query("Select * from {sso_cat_applications} ");
+
+	foreach($sql as $row){
+		$data[$row->id_application] = $row->application;
+	}
+ return $data;	
+}
+
+/** @brief user_sso_recupera()
+ * funcion recupera los datos del usuario el cual se va editar.
+ * 
+ * @author Miguel Angel
+ * @date 2014-11-13
+*/
+
+function user_sso_recupera($uid){
+	global $user;
+	$query = "select u.uid, u.name, u.mail, u.username, u.middlename, u.lastname, u.fullname, u.enrollment, ur.rid ,u.apps ,u.sex from {users} u inner join {users_roles} ur on u.uid= ur.uid where u.uid=$uid";//.$user->uid;
+	$query1 = "select p.id_parents, p.mail, p.fullname, p.occupation, p.phone from {sso_parents} p inner join {sso_user_parents} up on up.id_parents = p.id_parents where up.uid=$uid";//.$user->uid;
+	$result = db_query($query)->fetchAssoc();
+	$result1 = db_query($query1)->fetchAll();
+	$data['user']=$result;
+	//$data['user']=>array('rid'=)
+	$data['parents']=$result1;	
+	return $data;
+}
+
+/** @brief user_sso_get_rol()
+ * funcion para obtener los roles asignados a un usuario.
+ * 
+ * @author Sajit Avila Correa
+ * @date 2014-11-19
+*/
+
+function user_sso_get_rol($user){
+	$query = "select ur.rid from {users} u inner join {users_roles} ur on u.uid= ur.uid where u.uid=$user";
+	$result = db_query($query)->fetchAll();
+	foreach($result as $arr){
+		foreach($arr as $obj){
+			$list[]=$obj;
+		}
+	}
+	
+	return $list;
+}
+
+
+
+function user_get_list($uid){
+	$query_user = db_query('select apps from users where uid='.$uid)->fetchAssoc();
+	return $query_user;
+}
+
+/** @brief Implementa hook editar()
+ * Pagina que invoca la pantalla de Edicion de usuario
+ * 
+ * @author Sajit Avila Correa
+ * @date 2014-12-17
+*/
+
+function user_get_list_all($pagina=null){
+	$query_user['todos'] = db_query('select * from {users} where uid != 0 AND uid != 1')->fetchAll();
+	$total = db_query('select * from {users}')->rowCount();
+	$per_page = 10;
+	if(!$pagina){
+		$pagina = 1;
+		$inicio = 0;
+		$anteior = 1;
+	}else{
+		$anterior = ($pagina - 1);
+		$inicio = ($pagina - 1);
+	}
+	
+	if($pagina == 1){
+		$noshowfirst = 1;
+	}
+	$siguiente = ($pagina +1);
+	$total_paginas = ceil($total / $per_page);
+	
+	if($total_paginas == $pagina){
+		$noshowlast = 1;
+	}
+	
+	$consulta = "SELECT * FROM {users} where uid != 0 AND uid != 1 ORDER BY uid asc LIMIT ".@$inicio."," . @$per_page;
+	$rs = db_query($consulta)->fetchall();
+	
+	$query_user['usuarios_lista'] = $rs;
+	global $base_url;
+	if(@$noshowfirst == 1){
+		$style1 = "style='display:none'";
+	}
+	$html = "<ul class='paginador'><li ".@$style1." class='prev'><a href='$base_url/user-sso/".@$anterior."' class='prev'>Anterior</a></li>";
+	$count = 1;
+	while($count <= $total_paginas){
+		if($pagina == $count){
+			$current='current';
+		}else{
+			$current = '';
+		}
+		$html .= "<li><a href='$base_url/user-sso/$count' class='pagina $current'>$count</a></li>";
+		$count++;
+	}
+	if(@$noshowlast == 1){
+		$style = "style='display:none'";
+	}
+	$html .= "<li class='next' ".@$style."><a href='$base_url/user-sso/$siguiente' class='next'>Siguiente</a></li></ul>";
+	$query_user['paginador'] = $html;
+	
+	$consulta = "SELECT * FROM {users} where uid != 0 AND uid != 1 ";
+	$rs['usuarios_lista'] = db_query($consulta)->fetchall();
+
+	return $rs;
+}
+
+function user_verify_exists($mail){
+	$query_user = db_query("select name from {users} where name='$mail'")->rowCount();
+	return $query_user;
+}
+
+/** @brief user_sso_current_user_edit()
+ * funcion para obtener los datos del usuario en proceso de edicion
+ * 
+ * @author Sajit Avila Correa
+ * @date 2014-11-19
+*/
+
+function user_sso_current_user_edit($uid){
+	$query_user = db_query("select * from {users} where uid=$uid")->fetchAll();
+	return $query_user;
+}
+ /** @brief Implementa hook editar()
+ * Pagina que invoca la pantalla de Edicion de usuario
+ * 
+ * @author Sajit Avila Correa
+ * @date 2014-12-01
+*/
+
+function get_parent_user($pid){
+	$query_user = db_query("select * from {sso_parents} where id_parents=$pid")->fetchAssoc();
+	return $query_user;
+}
+
+/** @brief Implementa hook editar()
+ * Pagina que invoca la pantalla de Edicion de usuario
+ * 
+ * @author Sajit Avila Correa
+ * @date 2014-12-01
+*/
+
+function user_edit_new(){
+	if(!$_POST){
+		$elform = drupal_get_form('form_carga_user_new');
+		$variables = array(
+			'titulo' => 'Alta de Usuario',
+			'form' => $elform,
+		);
+		
+		return theme('user_sso_new', $variables);
+	}else{
+		form_carga_user_new_submit(null,$_POST);
+	}
+}
+
+/** @brief Implementa hook editar()
+ * Pagina que invoca la pantalla de Edicion de usuario
+ * 
+ * @author Sajit Avila Correa
+ * @date 2014-11-19
+*/
+function user_sso_edit($uid){
+	if(!$_POST){
+		$elform = drupal_get_form('form_carga_user_edit',$uid);
+		$variables = array(
+			'titulo' => 'Edicion de Usuario',
+			'form' => $elform,
+		);
+		
+		return theme('user_sso_edit', $variables);
+	}else{
+		form_carga_user_edit_submit(null,$_POST);
+	}
+}
+
+/** @brief Implementa hook theme()
+ * funcion para invocar los templates generados.
+ * 
+ * @author Sajit Avila Correa
+ * @date 2014-11-19
+ */
+function user_sso_theme() {
+  return array(
+    'user_sso_edit' => array(
+      'template' => 'user_sso_edit',
+    ),
+    'user_sso_new' => array(
+      'template' => 'user_sso_new',
+    ),
+    'user_sso_list' => array(
+	  'template'=> 'user_sso_list',
+	),
+	'user_sso_csv' => array(
+	  'template'=> 'user_sso_csv',
+  	)
+  );
+}
+
+function _recoverParents($register){
+	
+
+	$sql ="select p.fullname, p.mail  from sso_parents as p
+	inner join sso_user_parents as up on  p.id_parents = up.id_parents
+	where up.uid= ".$register->uid;
+
+	$result = db_query($sql)->fetchAll();
+	
+	//var_dump($result).die();
+	return $result;
+	
+}
+
+function user_sso_correo($register,$pass,$rol){
+	
+	if(isset($rol[4])){
+		$parent = _recoverParents($register);
+	}
+	
+	$to = $register->mail;
+	$subject='Registro al sistema de SSO';
+	$body ="Estimado ".$register->fullname."Se a realizado el registro de su usuario positivamente.\r\n";
+	$body .=" para ingresar su usuario es:".$register->mail." y su contraseña es:".$pass."\r\n";
+	$body.="En la sigiente direccion: http://sso.smit.com.mx/dev/sso/user";
+	$header ='MIME-Version: 1.0';
+	$header.='Content-type: text/html; charset=utf-8';
+	$header.='From: Registro <no-replay@sso.smit.com.mx>'."\r\n";
+	
+	if(isset($rol[4])){
+		$header.='Cc:'.$parent['mail']."\r\n";
+	}
+	
+	mail($to,$subject,$body,$header);
+}
+
+function _validate_dominio($email){
+	
+    $email_text = str_replace(' ','',$email);
+    $email_array =  explode("@", $email_text);
+	$msg='';
+    
+    $exp = "/^[a-z'0-9]+([._-][a-z'0-9]+)*@([a-z0-9]+([._-][a-z0-9]+))+$/";
+
+    if(preg_match($exp,$email_text)){
+        $domain = explode("@",$email_text);		
+        if(checkdnsrr($domain[1],"MX")){
+           $data = array('result'=>"200", 'msg'=>'Correo Valido');
+		   $msg ="El correo ".$email." es valido";
+        }else{
+            $data = array('result'=>"300", 'msg'=>'Correo Invalido');
+			$msg ="El correo ".$email." es Invalido";
+        }
+    }else{
+        $data = array('result'=>"400", 'msg'=>'Vacio');
+		$msg ="El correo ".$email." es vacio";
+    }
+
+	bitacora_sso_operation($msg, 'Usuario');
+    return $data;
+}
+
+/**
+ * _exist_license()
+ *
+ * function para comprobar la disponibilidad de una licencia 
+ * 
+ * @param $licencia variable que tiene la licencia a comprobar
+ * @return true or false
+ * @author Sajit Avila
+ * @date 2015-02-18
+*/
+
+function _exist_license($licencia){
+	$exist = db_query("select license from users where license = '$licencia'")->rowCount();
+	if($exist < 1){
+		return TRUE;
+	}else{
+		return FALSE;
+	}
+}
+
+/**
+ * 
+ * 
+ *@brief
+ * 
+ * exist_row()
+ * 
+ * Funcion para comprobar la existencia de un registro.
+ * 
+ * @param $_POST['campos'] recibe el nombre de la columna y el valor
+ * 
+ * @return regresa true o false
+ * 
+ * @author Sajit Avila
+ * @date 2015-01-20
+*/
+ 
+function user_exist_row(){
+	foreach($_POST['campos'] as $c => $v){
+		$row = $c;
+		$value = $v;
+	}
+	
+	$query = db_query("SELECT matricula from {users} where $row = '$value'")->rowCount();
+	
+	echo $query;
+}

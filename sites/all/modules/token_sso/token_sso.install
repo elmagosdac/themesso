@@ -1,0 +1,418 @@
+<?php
+  
+/**
+ * @file
+ * Install, update and uninstall functions for the token sso module.
+ */
+
+/**
+ * @brief Implements hook_schema().
+ * 
+ * Funcion para generar el modelo de las diferentes tablas que requiere el modulo.
+ * 
+ * @return $shema arreglo con la estructura de las difrentes tablas a ser creadas en
+ * la base de datos
+ * 
+ * @author Miguel Angel Chávez Obregón
+ * @date 2014-09-20
+ */
+function token_sso_schema() {
+	$schema['sso_token'] = array(
+	'description' => 'Tabla para crear los tokens de los usuarios anonimos',
+	'fields'=>array(
+		'id_token'=>array(
+		    'type' => 'serial',
+	        'unsigned' => TRUE,
+	        'not null' => TRUE,
+	        'description' => 'Primary Key: Unique category ID.',
+		),
+		'token'=>array(
+	        'type' => 'varchar',
+	        'length' => 10,
+	        'not null' => FALSE,
+	        'default' => '',
+	        'description' => 'Token creado.',
+	        'default'=>'',
+		),
+		'isbn'=>array(
+	        'type' => 'varchar',
+	        'length' => 45,
+	        'not null' => FALSE,
+	        'default' => '',
+	        'description' => 'ISBN del libro.',
+	        'default'=>'',
+		),		
+		'dstart'=>array(
+	        'type' => 'int',
+	        'unsigned' => TRUE,
+        	'not null' => FALSE,
+        	'default' => 0,
+        	'description' => 'Timestamp Fecha Incial',
+		),
+		'dend'=>array(
+	        'type' => 'int',
+	        'unsigned' => TRUE,
+        	'not null' => FALSE,
+        	'default' => 0,
+        	'description' => 'Timestamp Fecha Final',
+        	),
+		'permanent'=>array(
+	        'type' => 'varchar',
+	        'length' => 2,
+	        'default' => '',
+	        'description' => 'Licencia permanente.',
+	        'not null' => FALSE,		
+		),
+		'id_product'=>array(
+	        'type' => 'varchar',
+	        'length' => 45,
+	        'default' => '',
+	        'description' => 'Clave del producto.',
+	        'not null' => FALSE,			
+		),
+		'status'=>array(
+	        'type' => 'int',
+	        'length' => 2,
+	        'not null' => FALSE,	
+	        'default' => 0,
+	        'description' => 'Status del token.',  		
+		),
+		'created' => array(
+		        'type' => 'int',
+		        'not null' => FALSE,
+		        'default' => 0,
+		        'description' => 'Timestamp for when user was created.',
+		),
+		'id_application'=>array(
+			    'type' => 'int',
+		        'unsigned' => TRUE,
+		        'not null' => TRUE,
+		        'default' => 0,
+		        'description' => 'foreign keys: .',			
+		),		
+		'application_url'=>array(
+		        'type' => 'varchar',
+		        'length' => 45,
+		        'default' => '',
+		        'description' => 'Url de la aplicacion.',
+		        'not null' => FALSE,	
+		),				
+	 ), 
+	 'primary key'=>array('id_token'),
+	 'index'=>array(
+	 	'id_token'=>array('id_token'),
+	 	'token'=>array('token'),
+	 	'isbn'=>array('isbn'),
+	 	'id_product'=>array('id_product')
+	 ),
+	 'foreign keys' => array(
+	 	'id_application'=> array(
+		  'table'=>'sso_cat_applications',
+		  'columns'=>array('id_application'=>'id_application')
+		),
+	 ),
+	);
+	
+	$schema['sso_cat_applications']=array(
+		'description' => 'Catalogo de aplicaciones',
+		'fields'=>array(
+			'id_application'=>array(
+			    'type' => 'serial',
+		        'unsigned' => TRUE,
+		        'not null' => TRUE,
+		        'description' => 'Primary Key: Unique category ID.',			
+			),
+			'application'=>array(
+		        'type' => 'varchar',
+		        'length' => 45,
+		        'default' => '',
+		        'description' => 'Nombre de la aplicacion.',
+		        'not null' => TRUE,				
+			),
+			'description'=>array(
+		        'type' => 'varchar',
+		        'length' => 45,
+		        'default' => '',
+		        'description' => 'Descripcion de la aplicacion.',
+		        'not null' => TRUE,					
+			),
+			'status'=>array(
+		        'type' => 'int',
+		        'length' => 2,	
+		        'default' => 0,
+		        'description' => 'Status del token',
+		        'not null' => TRUE,
+		    ),
+			'url'=>array(
+		        'type' => 'varchar',
+		        'length' => 45,
+		        'default' => '',
+		        'description' => 'Url de la aplicacion.',
+		        'not null' => TRUE,	
+			),
+			'id_cat_type_communication'=>array(
+			    'type' => 'int',
+		        'unsigned' => TRUE,
+		        'not null' => TRUE,
+		        'description' => 'Primary Key: Unique category ID.',	
+			),
+		),
+	  'index'=>array(
+	       'id_application'=> array('id_application'),
+	       'application'=>array('application'),
+	  ),			
+	  'primary key'=>array('id_application'),
+	  'foreign keys' => array(
+	      'cat_type_communication' => array(
+	        'table' => 'sso_cat_type_communication',
+	        'columns' => array('id_cat_type_communication' => 'cat_type_communication'),
+	      ),
+	    ),  
+
+	);
+	
+	$schema['sso_cat_type_communication']=array(
+	    'description' => 'Catalogo de aplicaciones',
+	    'fields'=>array(
+			'id_cat_type_communication'=>array(
+			    'type' => 'serial',
+		        'unsigned' => TRUE,
+		        'not null' => TRUE,
+		        'description' => 'Primary Key: Unique category ID.',		
+			),
+			'communication'=>array(
+		        'type' => 'varchar',
+		        'length' => 45,
+		        'default' => '',
+		        'not null' => TRUE,				
+			),
+			'status'=>array(
+		        'type' => 'int',
+		        'length' => 2,
+		        'default' => 0,
+		        'not null' => TRUE,			
+			),
+		),
+		'primary key'=>array('id_cat_type_communication'),
+		'index' => array(
+		  'id_cat_type_communication'=>array('id_cat_type_communication')
+		),
+	);
+	
+	$schema['sso_user_token_app']=array(
+		'description' => 'Relacion de Tokens, aplicaciones y usuario',
+	    'fields'=>array(
+		  'id_user_license_app'=>array(
+			    'type' => 'serial',
+		        'unsigned' => TRUE,
+		        'not null' => TRUE,
+		        'description' => 'Primary Key: Unique category ID.',			
+			),	    
+		   'uid' => array(
+		        'type' => 'int',
+		        'not null' => TRUE,
+		        'description' => 'Primary Key: Unique user ID.',
+		        'default' => 0,
+		    ),
+		    
+		   'id_token' => array(
+		        'type' => 'int',
+		        'not null' => TRUE,
+		        'description' => 'Primary Key: Unique user ID.',
+		        'default' => 0,
+		    ),
+		   'id_application' => array(
+		        'type' => 'int',
+		        'not null' => TRUE,
+		        'description' => 'Primary Key: Unique user ID.',
+		        'default' => 0,
+		    ),		
+		),
+		'primary key'=>array('id_user_license_app'),
+		'index' => array(
+		  'id_user_license_app'=>array('id_user_license_app')
+		),
+	);
+	
+	$schema['sso_procesa_token']=array(
+	'description' => 'Tabla para alamacenar los token por ser procesados',
+	'fields'=>array(
+		'id_sso_procesa_token'=>array(
+			'type' => 'serial',
+			'unsigned' => TRUE,
+			'not null' => TRUE,
+			'description' => 'Primary Key: Unique category ID.',
+		),
+		'isbn'=>array(
+			'type' => 'varchar',
+			'length' => 45,
+			'default' => 'Clave ISBN del Libro',
+			'not null' => TRUE,
+		),
+		'idInterno'=>array(
+	        'type' => 'varchar',
+	        'length' => 45,
+	        'default' => '',
+	        'description' => 'Clave del producto.',
+	        'not null' => FALSE,			
+		),
+		'amount'=> array(
+			'type'=>'int',
+			'length' => 11,
+			'not null' => FALSE,
+			'default' => 0,
+			'description' => 'Cantidad de tokens a generar.',
+			
+		),
+		'permanent'=>array(
+	        'type' => 'int',
+	        'length' => 2,
+	        'default' => 0,
+	        'description' => 'Licencia permanente.',
+	        'not null' => FALSE,		
+		),		
+		'status'=>array(
+	        'type' => 'int',
+	        'length' => 2,
+	        'not null' => FALSE,	
+	        'default' => 0,
+	        'description' => 'Status del proceso.',  		
+		),		
+		'id_application' => array(
+		     'type' => 'int',
+		     'not null' => TRUE,
+		     'description' => 'Primary Key: Unique user ID.',
+		     'default' => 0,		
+		),
+		'mail' => array(
+	        'type' => 'varchar',
+	        'length' => 150,
+	        'default' => '',
+	        'description' => 'Correo del destinatario.',
+	        'not null' => FALSE,			
+		),   
+	 ),
+     'primary key'=>array('id_sso_procesa_token'),
+      'index' => array(
+		  'id_sso_procesa_token'=>array('id_sso_procesa_token'),
+		  'isbn' =>array('isbn'),
+		  'idInterno'=>array('idInterno'),
+		  'status' => array('status'),
+		  'amount' => array('amount'),
+		),	 
+	);
+	
+	$schema['sso_registra_descarga']=array(
+	'description' => 'Tabla para alamacenar la relacion de listas de tokens',
+	'fields'=>array(
+		'id_sso_registra_descarga'=>array(
+			'type' => 'serial',
+			'unsigned' => TRUE,
+			'not null' => TRUE,
+			'description' => 'Primary Key: Unique category ID.',
+		),
+		'file'=>array(
+			'type' => 'varchar',
+			'length' => 150,
+			'default' => 'Nombre del archivo',
+			'not null' => TRUE,
+		),
+		'status'=>array(
+	        'type' => 'int',
+	        'length' => 2,
+	        'not null' => FALSE,	
+	        'default' => 0,
+	        'description' => 'Status de descarga.',  			
+		),	
+		'created' => array(
+		    'type' => 'int',
+		    'not null' => FALSE,
+		    'default' => 0,
+		    'description' => 'Timestamp for when user was created.',
+		),		
+	  ),
+		'primary key'=>array('id_sso_registra_descarga'),
+		'index' => array(
+		  'id_sso_registra_descarga'=>array('id_sso_registra_descarga'),
+		  'file'=>array('file')
+		),	  
+	);
+	return $schema;
+}
+
+/**
+ * @brief Implements hook_install().
+ * 
+ * Funcion que genera las tablas creadas e inserta el primer registro
+ * 
+ * @author Miguel Angel Chávez Obregón
+ * @date 2014-09-20
+ */
+function token_sso_install() {
+  // Insert a default contact category.
+	db_insert('sso_token')
+	->fields(array(
+	'id_token' => 0,
+	'token' => '',
+	))->execute();
+
+	db_insert('sso_cat_type_communication')
+	->fields(array(
+	  'communication'=>'SOAP',
+	  'status'=>1
+	))->execute();
+	
+	db_insert('sso_cat_type_communication')
+	->fields(array(
+	  'communication'=>'REST',
+	  'status'=>1
+	))->execute();
+		
+	
+	db_insert('sso_cat_applications')
+	->fields(array(
+		'application'=>'Conecta',
+		'url' => '',
+		'status' => 1,
+		'id_cat_type_communication'=>1,
+	))->execute();
+	
+	db_insert('sso_cat_applications')
+	->fields(array(
+		'application'=>'Soy Lector',
+		'url' => '',
+		'status' => 1,
+		'id_cat_type_communication'=>1,
+	))->execute();	
+
+	db_insert('sso_cat_applications')
+	->fields(array(
+		'application'=>'Moodle UDP',
+		'url' => '',
+		'status' => 1,
+		'id_cat_type_communication'=>2,
+	))->execute();	
+
+	db_insert('sso_user_token_app')
+	->fields(array(
+	  'uid'=>0,
+	))->execute();	
+}
+
+/**
+ * @brief Implements hook_uninstall().
+ *
+ * Funcion que genera la des-instalacion del modulo y elimina la tabla del sistema
+ * 
+ * @author Miguel Angel Chávez Obregón
+ * @date 2014-10-20
+ */
+function token_sso_uninstall() {
+   drupal_uninstall_schema('token_sso');
+   drupal_uninstall_schema('sso_procesa_token');
+   drupal_uninstall_schema('sso_user_token_app');
+   drupal_uninstall_schema('sso_cat_type_communication');
+   drupal_uninstall_schema('sso_cat_applications');
+
+	
+}

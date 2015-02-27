@@ -1,0 +1,6 @@
+name = Group sso
+description = Modulo para la administracion de grupos
+version = 1.0
+package = SSO
+core = 7.x
+project = "SSO"

@@ -1,0 +1,230 @@
+<?php
+/**
+ * @file token_sso.module
+ * Modulo para la generacion, descarga y activacion de tokens.
+ * 
+  * @author Miguel Angel Chávez Obregón
+  * @date 2014-09-20
+ */
+
+ 
+  /**@brief implementacion del hook permission() 
+  * funcion que implementa los permisos de usuarios 
+  * mediante el hook permission()
+  * @author Miguel Angel Chávez Obregón
+  * @date 2014-10-10
+  * 
+ */
+  
+function bitacora_sso_permission(){
+  return array(
+  	'bitacora_sso permission'=> array(
+		'title' => t('Permisios de bitacora sso'),
+		'restrict access' => TRUE,
+	),
+	'view bitacora_sso' => array(
+		'title' => t('Visualizacion de Bitacora'),
+		'description' => t('Visualizacion al contenido de bitacora'),
+	),
+  );	
+}
+
+ /**@brief implementacion del hook menu() 
+  * funcion que implementa el menu 
+  * mediante el hook menu()
+  * @author Miguel Angel Chávez Obregón
+  * @date 2014-10-10
+  * 
+ */
+
+function bitacora_sso_menu(){
+	
+    $items=array();
+
+    $items['bitacora-sso']= array(
+    'title' => 'Bitacora SSO',			
+    'description' => 'Muestra bitacora.',	
+    'page callback' => 'bitacora_sso_reporte', 		
+    //'page arguments' => array('bitacora_sso_form'), 
+    'access arguments' => array('view bitacora_sso'),
+    'access callback' => TRUE,
+    'file' => 'bitacora_sso_form.inc'
+    );
+
+    return $items;
+}
+
+function bitacora_sso_reporte(){
+	
+	$elform = drupal_get_form('bitacora_sso_form_reportes');
+		$variables = array(
+			'titulo' => 'Reporte de bitacora de acciones',
+			'form' => $elform,
+			'data'=>listaBitacora(),
+		);
+		
+		return theme('bitacora_sso_reporte', $variables);
+	
+}
+
+function bitacora_sso_theme(){
+
+	return array(
+		'bitacora_sso_reporte'=>array(
+		  'template'=>'bitacora_sso_reporte'
+		)
+	);	
+}
+
+
+function listaBitacora(){
+	
+	$qry = "select  b.uid, b.name, b.mail, r.rid,r.name as rol, b.action, b.operation from sso_bitacora as b
+inner join role as r on b.rid = r.rid";
+
+	$result = db_query($qry);
+	
+	foreach ($result as $row) {
+		
+		$data[]=array(
+			'nombre' => $row->name,
+			'mail'=>$row->mail,
+			'rol'=>$row->rol,
+			'action'=>$row->action,
+			'operation'=>$row->operation
+		);
+		
+	}
+	return $data;
+}
+
+ /**@brief 
+  * funcion que lista los diferentes usuarios del sistema registrados en la tabla de bitacoras
+
+  * @author Miguel Angel Chávez Obregón
+  * @date 2014-10-10
+  * 
+ */
+function bitacora_sso_cat_user(){
+    $query = "select distinct(uid) as uid, name from {sso_bitacora}";
+    $qry = db_query($query);
+    
+    $data['0']='--Selecciona--';	
+    
+    foreach ($qry as $result) {
+    $data[$result->uid] = t($result->name);
+    }
+
+    return $data;	
+}
+
+ /**@brief 
+  * funcion que lista los diferentes roles del sistema registrados en la tabla de bitacoras
+
+  * @author Miguel Angel Chávez Obregón
+  * @date 2014-10-10
+  * 
+ */
+function bitacora_sso_cat_rol(){
+	$query = "Select rid, name from {role}";
+	$qry = db_query($query);
+    
+    $data['0']='--Selecciona--';	
+    
+    foreach ($qry as $result) {
+    $data[$result->rid] = t($result->name);
+    }
+
+    return $data;	
+	
+}
+
+ /**@brief 
+  * funcion que registra las operaciones que se realizan sobre el naveagador
+
+  * @author Miguel Angel Chávez Obregón
+  * @date 2014-10-10
+  * 
+ */
+function bitacora_sso_operation($operation,$action){
+    global $user;
+	
+	///var_dump($user).die();
+	
+	if(isset($user->roles[3])){
+		$rol = $user->roles[3];
+	}elseif(isset($user->roles[5])){
+		$rol = $user->roles[5];
+	}elseif(isset($user->roles[6])){
+		$rol = $user->roles[6];
+	}elseif(isset($user->roles[7])){
+		$rol = $user->roles[7];
+	}elseif(isset($user->roles[8])){
+		$rol = $user->roles[8];
+	}elseif(isset($user->roles[9])){
+		$rol = $user->roles[9];
+	}
+	
+	$query = "Select rid as id from role where name='".$rol."'";
+	$rid = db_query($query)->fetchAssoc();
+	//print_r($rid).die();
+	
+    $insert = array(
+            'uid' => $user->uid,
+            'name' => $user->name,
+            'mail' => $user->mail,
+            'operation' => $operation,
+            'action'=>$action,
+            'status' => 1,
+            'rid'=>$rid['id'],
+            'created' =>REQUEST_TIME
+    );
+	
+    db_insert('sso_bitacora')
+    ->fields($insert)
+    ->execute();
+}
+
+ /**@brief 
+  * funcion que registra las acciones hechas por los webservices
+
+  * @author Miguel Angel Chávez Obregón
+  * @date 2014-10-10
+  * 
+ */
+function bitacora_sso_wsoperation($users,$operation,$action){
+	
+	$user = $users;
+	
+	if(isset($user->roles[3])){
+		$rol = $user->roles[3];
+	}elseif(isset($user->roles[5])){
+		$rol = $user->roles[5];
+	}elseif(isset($user->roles[6])){
+		$rol = $user->roles[6];
+	}elseif(isset($user->roles[7])){
+		$rol = $user->roles[7];
+	}elseif(isset($user->roles[8])){
+		$rol = $user->roles[8];
+	}elseif(isset($user->roles[9])){
+		$rol = $user->roles[9];
+	}	
+	
+	$query = "Select rid as id from role where name='".$rol."'";
+	$rid = db_query($query)->fetchAssoc();
+		
+    $insert = array(
+            'uid' => trim($user->uid),
+            'name' => trim($user->name),
+            'mail' => trim($user->mail),
+            'operation' => $operation,
+            'action'=>$action,
+            'status' => 1,
+            'rid'=>$rid['id'],
+            'created' =>REQUEST_TIME
+    );
+	 //return $insert;
+   return $result = db_insert('sso_bitacora')
+    ->fields($insert)
+    ->execute();
+}

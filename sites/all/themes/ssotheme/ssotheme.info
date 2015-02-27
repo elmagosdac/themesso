@@ -1,0 +1,23 @@
+name = SSO Theme
+description = test for sso theme drupal
+version = 1.0
+core = 7.x
+
+stylesheets[all][] = css/style.css
+stylesheets[all][] = js/js.js
+
+features[] = logo
+features[] = name
+features[] = slogan
+features[] = favicon
+features[] = main_menu
+features[] = secondary_menu
+features[] = node_user_picture
+features[] = comment_user_picture
+features[] = comment_user_verification
+
+version = "7.x-1.4"
+core = "7.x"
+project = "ssotheme"
+datestamp = "1425061642"
+

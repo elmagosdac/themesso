@@ -1,0 +1,10 @@
+ALTER TABLE `sso`.`users` 
+ADD COLUMN `username` VARCHAR(60) NULL AFTER `data`,
+ADD COLUMN `lastname` VARCHAR(60) NULL AFTER `username`,
+ADD COLUMN `middlename` VARCHAR(60) NULL AFTER `lastname`,
+ADD COLUMN `fullname` VARCHAR(90) NULL AFTER `middlename`,
+ADD COLUMN `matricula` VARCHAR(45) NULL AFTER `fullname`,
+
+
+insert into role(name,weight) values('Alumno',4),('Profesor',4),('Control Escolar',4),('Director',4);
+

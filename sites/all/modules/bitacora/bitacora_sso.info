@@ -1,0 +1,8 @@
+name = Bitacora sso
+description = Modulo para gestionar la bitacora de acciones del SSO
+version = 1.0
+package = SSO
+core = 7.x
+project = "SSO"
+
+files[] = bitacora_sso_form.inc

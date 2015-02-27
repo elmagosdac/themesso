@@ -1,0 +1,236 @@
+<?php
+
+
+
+ 
+ //**************************E-Cat Inicio*********************************************************************/
+function _consulta_e_cat($idInterno){
+	
+  $ruta='http://ecat.services.grupo-sm.com/SMCatalogServices.asmx?WSDL';
+   $param = array('soap_version'=> SOAP_1_2,'trace'=> 1,"exception" => 0,'cache_wsdl'=> WSDL_CACHE_NONE);
+   $client= new SoapClient($ruta, $param);
+   
+   $ns="http://tempuri.org/";
+   $credentials=array('User'=>'upcdm','Password'=>'upcdm20120130');
+   $header = new SOAPHeader($ns,'WSEAuthenticateHeader',$credentials);  
+   
+   $body = array('GetXMLMaterial '.$ns=>array('idInterno'=>$idInterno));
+
+   $result = $client->__soapCall('GetXMLMaterial',$body,NULL,$header);
+
+    $book = simplexml_load_string($result->GetXmlMaterialResult->any);
+	$data =new stdClass;
+	
+    $data->Titulo= $book->Titulo;
+    $data->GraficoBig= $book->GraficoBig;
+    $data->ISBN= $book->ISBN;
+    $data->EAN=$book->EAN;
+    $data->Codigo=$book->Codigo;
+    
+	return $data;
+}
+/**************************E-Cat Fin*********************************************************************/
+
+
+function _create_array($usuario,$app){
+global $user;
+
+	$count =0;
+	foreach($usuario->roles as $k => $rol ){
+		if($count == 1){
+			$user_type = $k;
+		}
+		$count++;
+	}
+	
+	if($app == 2){
+		switch ($user_type) {
+			case '4':
+				$type=1;
+				break;
+		  case '5':
+				$type=2;
+				break;
+		  case '6':
+				$type=3;
+				break;		
+		}
+	}
+		
+	$data=array(
+		'call_id'=> '',
+		'userWS'=> 'sso',
+		'passWS'=> 'sso_pass',
+		'accountID'=>$user->idaccount,
+		'user_type'=> $user_type,
+		'id_user'=> $usuario->uid,
+		'username'=>$usuario->name,
+		'password'=>$usuario->pass,
+		'mail'=>$usuario->name,
+		'name'=>$usuario->username,
+		'lastname'=>$usuario->lastname,
+		'middlename'=>$usuario->middlename,
+		'cct'=> '3jula02',
+		'licencia'=> @$usuario->license,
+		'nivel_academico'=> '2', // catalogo de niveles
+		'nivel_educativo'=> '1', // catalogo educativo
+		'sex'=>'$usuario->sex',
+		'country'=>'',
+		'edo'=>'df',
+		'city'=>'mex',
+		'grade'=>1,
+		'group'=>'1A',		
+		'auth'=>'drupalservices'
+  	);
+
+return $data;
+}
+
+
+function _wsSoap($param,$conexion,$proceso){
+	
+	$options=array('location'=>$conexion['url'],'uri'=>$conexion['url'],'soap_version'=>SOAP_1_2);
+  	$client = new SoapClient($conexion['url'].'?WSDL',$options);
+	if($proceso == 'create'){
+		
+		if($conexion['id_application'] == 1){
+	  		$result = $client->__call('wsCreateUser',array('data'=>$param));
+		}elseif($conexion['id_application'] == 2){
+			$result = $client->__call('wsCreateUser',array($param));
+		}
+		
+	}else if( $proceso == 'edit'){
+		$result = $client->__call('wsEditUser',array('data'=>$param));
+	}
+	return $result;
+}
+
+function _wsCurl($param,$conexion,$proceso){
+	
+	$url = $conexion['url'];
+  	$curl = curl_init($url); 	
+  	$plain_text = base64_encode($param);
+  
+   	curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
+   	curl_setopt($curl, CURLOPT_POST, true);
+	
+	if($proceso == 'alta'){
+	   	curl_setopt($curl, CURLOPT_POSTFIELDS, array('data'=>$plain_text,'method'=>'create'));
+	}else if($proceso == 'edit'){
+		curl_setopt($curl, CURLOPT_POSTFIELDS, array('data'=>$plain_text,'method'=>'edit'));
+	}
+	
+   	$curl_response = curl_exec($curl);
+   
+   	curl_close($curl); 	
+	
+	return $curl_response;
+}
+
+function _recupera_ws($id){
+	$qry = 'Select * from {sso_webservers} where id_webserver = '.$id;
+		$conexion = db_query($qry)->fetchAssoc();
+
+	return $conexion;
+}
+
+/**************************Conecta digital Inicio*********************************************************************/
+function _wsConecta($usuario,$proceso){
+	try{
+
+		$data = _create_array($usuario);
+		$param = json_encode($data);	
+		
+		$conexion = _recupera_ws(1);
+		switch ($conexion['id_cat_type_communication']) {
+			case '1':
+				$result = _wsSoap($param,$conexion,$proceso);
+				
+				break;
+			case '2':
+				$result = _wsCurl($param,$conexion,$proceso);
+				break;
+		}
+	
+	return $result;
+  }catch(exception $e){
+		drupal_set_message($e->getMessage().' '.$e->getCode(),'error');
+  }
+  
+}
+
+function wsAsignarLibros($uid,$idInterno){
+
+try{
+	$conexion = _recupera_ws(1);
+		
+	$options=array('location'=>$conexion->url,'uri'=>$conexion->url,'soap_version'=>SOAP_1_2,'trace'=>true);
+  	$client = new SoapClient($conexion->url.'?WSDL',$options);
+	
+	$data=array(
+		'userWS'=> 'sso',
+		'passWS'=> 'sso_pass',
+		'id_user'=> $uid,
+		'code' => $idInterno
+  );
+  	
+   $param = json_encode($data);	
+	
+   $result = $client->wsAsignarLibros($param,FALSE);	
+
+  return; $result;
+  
+  }catch(exception $e){
+		drupal_set_message($e->getMessage().' '.$e->getCode(),'error');
+  }
+}
+/**************************Conecta digital Fin*********************************************************************/
+
+/**************************Soy lector Inicio*********************************************************************/
+function _wsSoyLector($usuario,$proceso){
+
+	$conexion = _recupera_ws(2);
+
+	$data = _create_array($usuario);
+	$param = json_encode($data);	
+    $plain_text = base64_encode($param);
+  
+  $data=array(
+		'call_id'=> '',
+		'pvUsuario'=> 'wsSoyLector',
+		'pvPassword'=> '654321',
+		'pvCadenaJson'=>$plain_text	
+  );
+
+		switch ($conexion['id_cat_type_communication']) {
+			case '1':
+				$result = _wsSoap($data,$conexion,$proceso);
+				break;
+			case '2':
+				$result = _wsCurl($data,$conexion,$proceso);
+				break;
+		}
+  
+  
+  return $result;
+}
+
+/**************************Soy lector Fin*********************************************************************/
+
+function _wsMoodle($usuario,$proceso){
+
+		$data = _create_array($usuario);
+		$param = json_encode($data);	
+		
+		$conexion = _recupera_ws(3);
+  
+		switch ($conexion['id_cat_type_communication']) {
+			case '1':
+				$result = _wsSoap($param,$conexion,$proceso);
+				break;
+			case '2':
+				$result = _wsCurl($param,$conexion,$proceso);
+				break;
+		}
+  return $result;
+}

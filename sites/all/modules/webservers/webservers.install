@@ -1,0 +1,119 @@
+<?php
+  
+/**
+ * @file
+ * Install, update and uninstall functions for the webservers sso module.
+ */
+
+/**
+ * @brief Implements hook_schema().
+ * 
+ * Funcion para generar el modelo de las diferentes tablas que requiere el modulo.
+ * 
+ * @return $shema arreglo con la estructura de las difrentes tablas a ser creadas en
+ * la base de datos
+ * 
+ * @author Miguel Angel Chávez Obregón
+ * @date 2015-02-25
+ */
+ function webservers_schema() {
+ 	
+	$schema['sso_webservers'] = array(
+	'description' => 'Tabla para crear el registro de los webservers',
+	'fields'=>array(
+		'id_webserver'=>array(
+		    'type' => 'serial',
+	        'unsigned' => TRUE,
+	        'not null' => TRUE,
+	        'description' => 'Primary Key: Unique category ID.',
+		),
+		'url'=>array(
+	        'type' => 'varchar',
+	        'length' => 255,
+	        'not null' => FALSE,
+	        'default' => '',
+	        'description' => 'URL del webserver.',
+	        'default'=>'',
+		),
+		'status'=>array(
+	        'type' => 'int',
+	        'length' => 2,
+	        'not null' => FALSE,	
+	        'default' => 0,
+	        'description' => 'Status del webserver.',  		
+		),
+		'created' => array(
+		        'type' => 'int',
+		        'not null' => FALSE,
+		        'default' => 0,
+		        'description' => 'Timestamp for when user was created.',
+		),		
+		'id_application'=>array(
+			    'type' => 'int',
+		        'unsigned' => TRUE,
+		        'not null' => TRUE,
+		        'default' => 0,
+		        'description' => 'foreign keys: .',			
+		),	
+		'id_cat_type_communication'=>array(
+			    'type' => 'int',
+		        'unsigned' => TRUE,
+		        'not null' => TRUE,
+		        'default' => 0,
+		        'description' => 'foreign keys: .',			
+		),					
+	  ),
+		  'index'=>array(
+	       'id_webserver'=> array('id_webserver'),
+	       'url'=>array('url'),
+	  ),
+	  'primary key'=>array('id_webserver'),
+	  'foreign keys' => array(
+	      'cat_type_communication' => array(
+	        'table' => 'sso_cat_type_communication',
+	        'columns' => array('id_cat_type_communication' => 'id_cat_type_communication'),
+	      ),
+	    ), 	  	
+	);
+	
+	return $schema;
+ }
+
+function webservers_install(){
+	
+	db_insert('sso_webservers')
+	->fields(array(
+		'url'=>'http://conectamx.smit.com.mx/soap/sso/api',
+		'id_application'=>1,
+		'id_cat_type_communication'=>1,
+		'status'=>1
+	))->execute();
+	
+	db_insert('sso_webservers')
+	->fields(array(
+		'url'=>'http://add1844c7d564529b4f8a5da428e4231.cloudapp.net/WSSoyLector.asmx',
+		'id_application'=>2,
+		'id_cat_type_communication'=>1,
+		'status'=>1
+	))->execute();
+	
+	db_insert('sso_webservers')
+	->fields(array(
+		'url'=>'http://54.172.113.246/testPhp/client.php',
+		'id_application'=>3,
+		'id_cat_type_communication'=>2,
+		'status'=>1
+	))->execute();		
+}
+/**
+ * @brief Implements hook_uninstall().
+ *
+ * Funcion que genera la des-instalacion del modulo y elimina la tabla del sistema
+ * 
+ * @author Miguel Angel Chávez Obregón
+ * @date 2015-02-25
+ */
+function webservers_uninstall() {
+   drupal_uninstall_schema('sso_webservers');
+	
+}

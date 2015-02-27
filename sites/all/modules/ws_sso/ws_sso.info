@@ -1,0 +1,6 @@
+name = ws_sso
+description = Api de conexion  con otros servicios
+version = 1.0
+package = SSO
+core = 7.x
+project = "SSO"

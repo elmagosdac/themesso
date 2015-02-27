@@ -1,0 +1,5 @@
+name = webservers
+description = Modulo donde se concentran las conexiones los webservers de otras aplicaciones.
+version = 1.0
+package = SSO
+core = 7.x

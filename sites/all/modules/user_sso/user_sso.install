@@ -1,0 +1,325 @@
+<?php
+/**
+ * @file
+ * Install, update and uninstall functions for the user module.
+ */
+ /**
+  * 
+  * Agregando tabla parientes
+  * 
+  */ 
+ function user_sso_schema(){
+
+  $schema['sso_parents']=array(
+   'description' => 'Stores distributed authentication mapping.',
+    'fields' => array(
+		'id_parents'=>array(
+			'type' => 'serial',
+	        'unsigned' => TRUE,
+	        'not null' => TRUE,
+	        'description' => 'Llave primaria del parientes.',
+		),
+		'fullname'=>array(
+		    'type' => 'varchar',
+		    'length' => 200,
+		    'not null' => FALSE,
+		    'default' => '',
+		    'description' => "Campo con el nombre completo.",		
+		),
+		'phone'=> array(
+		    'type' => 'varchar',
+		    'length' => 50,
+		    'not null' => FALSE,
+		    'default' => 0,
+		    'description' => "Campo Telefono de contacto.",			
+		),
+		'occupation'=>array(
+		    'type' => 'varchar',
+		    'length' => 200,
+		    'not null' => FALSE,
+		    'default' => '',
+		    'description' => "Campo ocupacion de los padres.",			
+		),
+		'mail'=>array(
+		    'type' => 'varchar',
+		    'length' => 150,
+		    'not null' => FALSE,
+		    'default' => '',
+		    'description' => "Campo de correo del tutor.",				
+		),
+	 ),
+	 'primary key'=>array('id_parents'),
+	 'index'=>array(
+	    'id_parents'=>array('id_parents')
+	 ),
+  );
+  
+  $schema['sso_user_parents']=array(
+  'description' => 'Relacion de padres alumnos',
+  'fields' => array(
+    'id_parents'=>array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+	    'description' => 'Llave primaria del parientes.',
+		), 
+	  'uid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+	    'description' => 'Primary Key: Unique user ID.',
+      ),		
+   ),
+    'index'=>array(
+	    'id_parents'=>array('id_parents'),
+		'uid'=>array('uid')
+	),
+	'primary key' => array('id_parents','uid'),
+	    'indexes' => array(
+	      'id_parents' => array('id_parents'),
+	),	 
+  );	
+  
+  return $schema;
+ }
+ 
+
+function user_sso_install(){
+	
+	$schema= array();
+	user_sso_schema_alter($schema);
+	
+	db_add_field('users', 'username', $schema['users']['fields']['username']);
+	db_add_field('users', 'lastname', $schema['users']['fields']['lastname']);
+	db_add_field('users', 'middlename', $schema['users']['fields']['middlename']);
+	db_add_field('users', 'fullname', $schema['users']['fields']['fullname']);
+	db_add_field('users', 'enrollment', $schema['users']['fields']['enrollment']);
+	db_add_field('users', 'apps', $schema['users']['fields']['apps']);
+	db_add_field('users', 'license', $schema['users']['fields']['license']);
+	db_add_field('users', 'sex', $schema['users']['fields']['sex']);
+	db_add_field('users', 'grade', $schema['users']['fields']['grade']);
+	db_add_field('users', 'group', $schema['users']['fields']['group']);
+	db_add_field('users', 'country', $schema['users']['fields']['country']);
+	db_add_field('users', 'city', $schema['users']['fields']['city']);
+	db_add_field('users', 'idaccount', $schema['users']['fields']['idaccount']);
+	
+	$newRoles = array(
+		'Alumno', 
+		'Profesor', 
+		'Director',
+		'Administrador País',
+		'Editor de contenido',
+		'Administrador de plataforma'
+	);
+	
+	foreach ($newRoles as $r){
+		if(!user_role_load_by_name($r)){
+			$role = new stdClass();
+	      	$role->name = $r;
+	      	user_role_save($role);
+	    }
+	}	
+}
+
+function user_sso_uninstall() {
+	
+   	drupal_uninstall_schema('sso_parents');
+    drupal_uninstall_schema('sso_user_parents');
+	db_drop_table('sso_parents');
+	
+	db_drop_field('users', 'username');
+	db_drop_field('users', 'lastname');
+	db_drop_field('users', 'middlename');
+	db_drop_field('users', 'fullname');
+	db_drop_field('users', 'enrollment');
+	db_drop_field('users', 'apps');
+	db_drop_field('users', 'license');
+	db_drop_field('users', 'sex');
+	db_drop_field('users', 'grade');
+	db_drop_field('users', 'group');
+	db_drop_field('users', 'country');
+	db_drop_field('users', 'city');
+	db_drop_field('users', 'idaccount');
+	
+}
+
+ /**
+  * Insertando nuevos roles dentro de la tabla de roles
+  * 
+  */
+  /*
+ function user_sso_update_7001(){
+ 	
+ 	db_insert('role')
+	->fields(array(
+		'name' => 'Alumno',
+		'weigth' =>4
+	))
+	->execute();
+	
+  	db_insert('role')
+	->fields(array(
+		'name' => 'Profesor',
+		'weigth' =>5
+	))
+	->execute();
+	
+  	db_insert('role')
+	->fields(array(
+		'name' => 'Control Escolar',
+		'weigth' =>6
+	))
+	->execute();	
+ }
+   * */
+ /**
+  * 
+  * Agregando campos a la tabla users
+  * 
+  */
+  
+  
+  function user_sso_schema_alter(&$schema){
+  	
+	$schema['users']['fields']['username']=array(
+  		'type' => 'varchar',
+	    'length' => 60,
+	    'not null' => FALSE,
+	    'default' => '',
+	    'description' => "Se grega apellido paterno.",);
+	
+  	$schema['users']['fields']['lastname']=array(
+  		'type' => 'varchar',
+	    'length' => 60,
+	    'not null' => FALSE,
+	    'default' => '',
+	    'description' => "Se grega apellido paterno.",);
+		
+	$schema['users']['fields']['middlename']=array(
+		'type' => 'varchar',
+	    'length' => 60,
+	    'not null' => FALSE,
+	    'default' => '',
+	    'description' => "Se grega apellido materno.",);
+		
+	$schema['users']['fields']['fullname']=array(
+		'type' => 'varchar',
+	    'length' => 200,
+	    'not null' => FALSE,
+	    'default' => '',
+	    'description' => "Campo con el nombre completo.",);		
+		
+	$schema['users']['fields']['enrollment']=array(
+		'type' => 'varchar',
+	    'length' => 200,
+	    'not null' => FALSE,
+	    'default' => '',
+	    'description' => "Numeró de boleta o matricula.",);
+
+	$schema['users']['fields']['apps']=array(
+		'type' => 'varchar',
+	    'length' => 200,
+	    'not null' => FALSE,
+	    'default' => '',
+	    'description' => "Aplicaciones de usuario.",);		
+	
+	$schema['users']['fields']['sex']=array(
+		'type' => 'varchar',
+	    'length' => 10,
+	    'not null' => FALSE,
+	    'default' => '',
+	    'description' => "sexo del usuario.",);		
+		
+	$schema['users']['fields']['license']=array(
+		'type' => 'varchar',
+	    'length' => 200,
+	    'not null' => FALSE,
+	    'default' => '',
+	    'description' => "lisencia de usuario.",);
+	
+	$schema['users']['fields']['idaccount']=array(
+		'type' => 'varchar',
+	    'length' => 100,
+	    'not null' => FALSE,
+	    'default' => '',
+	    'description' => "Id de escuela.",
+	);	
+	
+	$schema['users']['fields']['grade']=array(
+		'type' => 'varchar',
+	    'length' => 100,
+	    'not null' => FALSE,
+	    'default' => '',
+	    'description' => "Grado de estudios.",
+	);
+	
+	$schema['users']['fields']['group']=array(
+		'type' => 'varchar',
+	    'length' => 100,
+	    'not null' => FALSE,
+	    'default' => '',
+	    'description' => "Grupo del usuario.",
+	);
+	
+	$schema['users']['fields']['country']=array(
+		'type' => 'varchar',
+	    'length' => 100,
+	    'not null' => FALSE,
+	    'default' => '',
+	    'description' => "Pais de origen.",
+	);
+	
+	$schema['users']['fields']['city']=array(
+		'type' => 'varchar',
+	    'length' => 100,
+	    'not null' => FALSE,
+	    'default' => '',
+	    'description' => "Grado de estudios.",
+	);
+	
+  }
+ /* 
+ function user_sso_update_7000(){
+ 	
+	
+	$fields = array(
+	 	'lastName' => array(
+	    'type' => 'varchar',
+	    'length' => 60,
+	    'not null' => FALSE,
+	    'default' => '',
+	    'description' => "Se grega apellido paterno.",
+		),
+	  	'midddleName' => array(
+	    'type' => 'varchar',
+	    'length' => 60,
+	    'not null' => FALSE,
+	    'default' => '',
+	    'description' => "Se grega apellido materno.",
+		),
+	  	'fullName' => array(
+	    'type' => 'varchar',
+	    'length' => 200,
+	    'not null' => FALSE,
+	    'default' => '',
+	    'description' => "Campo con el nombre completo.",
+		),
+		'matricula' => array(
+	    'type' => 'int',
+	    'length' => 20,
+	    'not null' => FALSE,
+	    'default' => '',
+	    'description' => "Numeró de boleta o matricula.",		
+		),
+	);
+	
+	foreach ($fields as $key => $fied) {
+		if(!db_field_exists('users', $key)){
+			 db_add_field('users', $key, $fied);
+		}
+	}
+ }
+  * */
+ 

@@ -1,0 +1,5 @@
+name = Login sso
+description = Modulo para realizar inicio de sesión de usuarios SSO.
+version = 1.0
+package = SSO
+core = 7.x

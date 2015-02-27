@@ -1,0 +1,54 @@
+<?php
+ 
+function ws_sso_menu(){
+	$items= array();
+	
+	$items['ws_sso'] = array(
+    'title' => 'SOAP Server',
+    'page callback' => 'ws_sso_server',
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK,	
+	);
+	return $items;
+}
+
+/**
+ *@brief
+ * 
+ * Implementando hook_server()
+ * 
+ * Funcion que genera el webserver basado en no-WSDL, usando SOAP 1.2
+ * AL ser invocadao el sistema muestra los diferentes servicios que estan entregando.
+ * 
+  * @author Miguel Angel Chávez Obregón
+  * @date 2014-10-20
+ */
+
+function ws_sso_server(){
+
+ include_once(  DRUPAL_ROOT . '/sites/all/modules/ws_sso/ws_sso.inc'  ); 
+
+ $options = array('uri'=>'http://'.$_SERVER['HTTP_HOST'].'/sso/api/services/ws_sso','soap_version' => SOAP_1_2);
+ //$url = url(drupal_get_path('module', 'wsdlsm').'sso.wsdl.php',array('absolute'=>TRUE));
+
+ 
+ $server = new SoapServer(null,$options);
+ 
+ $server->addFunction('wsConfirm');
+ $server->addFunction('wsUserAuth');
+ $server->addFunction('wseditUser');
+ 
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+  $server->handle();
+} else {
+  echo "Este servidor SOAP puede manejar las siguientes funciones: </br>";
+  $functions = $server->getFunctions();
+  foreach($functions as $func) {
+    echo $func . "<br>";
+  }
+
+}
+ return TRUE;
+ 
+}
+

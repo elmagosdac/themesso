@@ -1,0 +1,116 @@
+<?php
+/**
+ * @file
+ * Install, update and uninstall functions for the bitacora sso module.
+ */
+
+/**
+ * @brief Implements hook_schema().
+ * 
+ * Funcion que crea la tabla de bitacoras durante la instalación del modulo
+ * 
+ * @author Miguel Angel Chávez Obregón
+ * @date 2014-10-20
+ */
+function bitacora_sso_schema() {
+	$schema['sso_bitacora'] = array(
+	 'description' => 'Tabla para crear los tokens de los usuarios anonimos',
+	 'fields' => array(
+	   'id_bitacora'=>array(
+		    'type' => 'serial',
+	        'unsigned' => TRUE,
+	        'not null' => TRUE,
+	        'description' => 'Primary Key: ID unico para registro de bitacoras.',
+		),
+	   'uid' => array(
+         'type' => 'int',
+         'not null' => TRUE,
+         'default' => 0,
+         'description' => "User's {users}.uid.",
+        ),
+        'name' => array(
+        'type' => 'varchar',
+        'length' => 60,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'Unique user name.',
+      ),
+      'rid' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'description' => 'Identificador del rol.',
+      ),      
+      'mail' => array(
+        'type' => 'varchar',
+        'length' => 254,
+        'not null' => FALSE,
+        'default' => '',
+        'description' => "User's e-mail address.",
+      ),      
+		'created' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'Timestamp for when user was created.',
+      ),
+      'status' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+        'size' => 'tiny',
+        'description' => 'Whether the user is active(1) or blocked(0).',
+      ),      
+      'operation'=>array(
+        'type' => 'text',
+        'not null' => FALSE,
+        'description' => 'Registro de operaciones.',      	  
+	  ),
+      'action'=>array(
+        'type' => 'text',
+        'not null' => FALSE,
+        'description' => 'Registro de acciones ejecutadas.',      	  
+	  ),	  
+	 ),
+	 'primary key'=>array('id_bitacora'),
+	 'index'=>array(
+	 	'uid'=>array('uid'),
+	 	'name' => array('name'),
+		'action'=>array('action')
+	  )
+	);
+	
+	return $schema;
+}
+
+/**
+ * @brief Implements hook_install().
+ * 
+ * Funcion que inserta el primer registro para generar la tabla
+ * 
+ * @author Miguel Angel Chávez Obregón
+ * @date 2014-10-20
+ */
+function bitacora_sso_install(){
+	db_insert('sso_bitacora')
+	->fields(array(
+	    'uid'=>1,
+	    'rid'=>3,
+	    'created'=>REQUEST_TIME,
+	    'status'=>1,
+	    'operation'=>'Instalacion de bitacora',
+	    'action'=>'Instalacion'
+	  )
+	 )
+	->execute();
+}
+/**
+ * @brief Implements hook_uninstall().
+ *
+ * Funcion que genera la des-instalacion del modulo y elimina la tabla del sistema
+ * 
+ * @author Miguel Angel Chávez Obregón
+ * @date 2014-10-20
+ */
+function bitacora_sso_uninstall() {
+   drupal_uninstall_schema('bitacora_sso');
+}

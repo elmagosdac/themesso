@@ -1,0 +1,5 @@
+name = Admin sso
+description = Modulo para la administracion de los catalogos y rutas del los servicios.
+version = 1.0
+package = SSO
+core = 7.x

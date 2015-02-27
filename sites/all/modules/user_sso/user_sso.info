@@ -1,0 +1,9 @@
+name = User sso
+description = Modulo para la administracion de usuarios el modulo de users
+version = 1.0
+package = SSO
+core = 7.x
+project = "SSO"
+
+datestamp = "1413387510"
+

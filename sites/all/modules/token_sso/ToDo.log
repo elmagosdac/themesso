@@ -1,0 +1,5 @@
++Token sso
+++Terminar la pantalla de registro de tokens por QR
+++Agregar metodo para crear los archivos al final del proceso batch de carga multiples registros.
+
+++Afinar el server para que haga url amigables y tunear el mysql

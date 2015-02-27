@@ -1,0 +1,416 @@
+<?php
+/** @brief hook_form_alter
+ * Altera el flujo original del Core de drupal de la funcion para Logeo de usuarios.
+ * @param $form contiene todos los parametros de los formularios usados en el bloque
+ * @param $form_state contiene los valores del forulario alterado en este caso Login
+ * @param $form_id identificador de formulario
+ * @return $form devuelve los datos del formulario alterado
+ * @author Sajit David Avila Correa
+ * @date 2014-11-13
+ */
+ 
+function login_sso_form_alter(&$form, &$form_state, $form_id) {
+    if ($form_id == "user_login_block") {
+        $form['#action'] = url(current_path(), array('query' => drupal_get_destination(), 'external' => FALSE));
+	  $form['#id'] = 'user-login-form';
+	  $form['#validate'] = login_sso_validators();
+	  $form['#submit'][] = 'login_sso_submit';
+	  $form['name'] = array('#type' => 'textfield',
+	    '#title' => t('Username'),
+	    '#maxlength' => USERNAME_MAX_LENGTH,
+	    '#size' => 15,
+	    '#required' => TRUE,
+	  );
+	  
+	  $form['pass'] = array('#type' => 'password',
+	    '#title' => t('Password'),
+	    '#size' => 15,
+	    '#required' => TRUE,
+	  );
+	  
+	  $form['actions'] = array('#type' => 'actions');
+	  $form['actions']['submit'] = array('#type' => 'submit',
+	    '#value' => t('Log in'),
+	  );
+	  
+	  $items = array();
+	  if (variable_get('user_register', USER_REGISTER_VISITORS_ADMINISTRATIVE_APPROVAL)) {
+	    $items[] = l(t('Create new account'), 'user/register', array('attributes' => array('title' => t('Create a new user account.'))));
+	  }
+	  
+	  $items[] = l(t('Request new password'), 'user/password', array('attributes' => array('title' => t('Request new password via e-mail.'))));
+	  $form['links'] = array('#markup' => theme('item_list', array('items' => $items)));
+	  return $form;
+    }
+}
+
+/** @brief login_sso_validators()
+ * funcion para validar el acceso al SSO
+
+ * @author Sajit David Avila Correa
+ * @date 2014-11-13
+ */
+ 
+function login_sso_validators(){
+	return array('login_sso_name_validate', 'login_sso_authenticate_validate', 'login_sso_final_validate');
+}
+
+/** @brief login_sso_name_validate()
+ * Validacion de nombre de usuario
+ * @param $form contiene todos los parametros de los formularios usados en el bloque
+ * @param $form_state contiene los valores del forulario alterado en este caso Login
+ * @return TRUE/FALSE
+ * @author Sajit David Avila Correa
+ * @date 2014-11-13
+ */
+
+function login_sso_name_validate($form, &$form_state) {
+  if (!empty($form_state['values']['name']) && user_is_blocked($form_state['values']['name'])) {
+    form_set_error('name', t('The username %name has not been activated or is blocked.', array('%name' => $form_state['values']['name'])));
+  }
+}
+
+/** @brief login_sso_authenticate_validate()
+ * funcion de autentificado para definir si el usuario existe o no en la DB del SSO
+ * @param $form contiene todos los parametros de los formularios usados en el bloque
+ * @param $form_state contiene los valores del forulario alterado en este caso Login
+ * @return TRUE/FALSE
+ * @author Sajit David Avila Correa
+ * @date 2014-11-13
+ */
+function login_sso_authenticate_validate($form, &$form_state) {
+  $password = trim($form_state['values']['pass']);
+  if (!empty($form_state['values']['name']) && !empty($password)) {
+    if (!flood_is_allowed('failed_login_attempt_ip', variable_get('user_failed_login_ip_limit', 50), variable_get('user_failed_login_ip_window', 3600))) {
+      $form_state['flood_control_triggered'] = 'ip';
+      return;
+    }
+    $account = db_query("SELECT * FROM {users} WHERE name = :name AND status = 1", array(':name' => $form_state['values']['name']))->fetchObject();
+    if ($account) {
+      if (variable_get('user_failed_login_identifier_uid_only', FALSE)) {
+        $identifier = $account->uid;
+      }
+      else {
+        $identifier = $account->uid . '-' . ip_address();
+      }
+      $form_state['flood_control_user_identifier'] = $identifier;
+
+      if (!flood_is_allowed('failed_login_attempt_user', variable_get('user_failed_login_user_limit', 5), variable_get('user_failed_login_user_window', 21600), $identifier)) {
+        $form_state['flood_control_triggered'] = 'user';
+        return;
+      }
+    }
+
+    $form_state['uid'] = user_authenticate($form_state['values']['name'], $password);
+  }
+}
+
+/** @brief login_sso_final_validate()
+ * Filtro de validacion de usuarios para el Logeo en el SSO
+ * @param $form contiene todos los parametros de los formularios usados en el bloque
+ * @param $form_state contiene los valores del forulario alterado en este caso Login
+ * @return Mensaje de error dependiendo el caso, falla de accesos por IP, intentos fallidos, usuario inexistente. 
+ * @author Sajit David Avila Correa
+ * @date 2014-11-13
+ */
+function login_sso_final_validate($form, &$form_state) {
+  if (empty($form_state['uid'])) {
+    flood_register_event('failed_login_attempt_ip', variable_get('user_failed_login_ip_window', 3600));
+    if (isset($form_state['flood_control_user_identifier'])) {
+      flood_register_event('failed_login_attempt_user', variable_get('user_failed_login_user_window', 21600), $form_state['flood_control_user_identifier']);
+    }
+
+    if (isset($form_state['flood_control_triggered'])) {
+      if ($form_state['flood_control_triggered'] == 'user') {
+        form_set_error('name', format_plural(variable_get('user_failed_login_user_limit', 5), 'Sorry, there has been more than one failed login attempt for this account. It is temporarily blocked. Try again later or <a href="@url">request a new password</a>.', 'Sorry, there have been more than @count failed login attempts for this account. It is temporarily blocked. Try again later or <a href="@url">request a new password</a>.', array('@url' => url('user/password'))));
+      }
+      else {
+        form_set_error('name', t('Sorry, too many failed login attempts from your IP address. This IP address is temporarily blocked. Try again later or <a href="@url">request a new password</a>.', array('@url' => url('user/password'))));
+      }
+    }
+    else {		//en caso de no encontrar el usuario en la base de datos verifica finalmente su existencia en LDAP
+    	$a = explode( '@' ,$_POST['name']);
+		if($a[1] == 'mxsm.net'){
+			$datas = array(
+				 'user' => $form_state['values']['name'],
+				 'password' => $form_state['values']['pass'],
+			);
+			$ldap_info = user_ldap_verify($datas);
+			$_SESSION['ldap_info']=$ldap_info;
+			$_SESSION['ldap_info']['pass']=$form_state['values']['pass'];
+			
+		}else{
+			form_set_error('name', t('Sorry, unrecognized username or password. <a href="@password">Have you forgotten your password?</a>', array('@password' => url('user/password', array('query' => array('name' => $form_state['values']['name']))))));
+			watchdog('user', 'Login attempt failed for %user.', array('%user' => $form_state['values']['name']));
+		}
+    }
+  }
+  elseif (isset($form_state['flood_control_user_identifier'])) {
+    flood_clear_event('failed_login_attempt_user', $form_state['flood_control_user_identifier']);
+  }
+}
+
+function login_sso_getUserLdap($datos){
+	$ldap = $datos;
+	$useruid=array();
+	require './includes/password.inc';
+	// 3 administrador // 4 alumno // 5 profesor // 6 director // 7 contenido
+	foreach($ldap['groups_ldap'] as $ldapRol){
+		// verifica la cadena de LDAP donde tiene asignados los roles y accesos
+		$found = strpos($ldapRol, 'SSO');
+		if($found == TRUE){
+			$ldap_rol = explode(',',$ldapRol);
+			$ldap_rol = ''.$ldap_rol[0];
+			//Delimita que rol se le asignara al usuario
+			switch ($ldap_rol) {
+				case 'CN=profesor':
+					$rols = 'profesor';
+					$rid = 5;
+					break;
+				case 'CN=alumno':
+					$rols = 'alumno';
+					$rid = 4;
+					break;
+				case 'CN=admin_sso':
+					$rol = 'admin';
+					$rid = 3;
+					break;
+				case 'CN=contenido':
+					$rols = 'contenido';
+					$rid = 7;
+					break;
+				case 'CN=director':
+					$rols = 'director';
+					$rid = 6;
+					break;
+			}
+			
+			$rolArr[$rid] = $rols;
+		
+			$mail = $ldap['name'].'@'.$rols.'.mxsm.net';
+			$user = db_query("select * from {users}")->fetchAll();
+			$c=0;
+			$uid=0;
+			foreach($user as $u){
+				if($u->name == $mail){
+					$c++;
+					$uid = $u->uid;
+				}	
+			}
+			//verifica existencia del usuario que accesa desde LDAP
+			 if($c == 0){
+
+				$password = user_hash_password(trim($ldap['pass']));
+				$last_id = db_query('select max(uid) from {users}')->fetchAssoc();
+				$last = $last_id['max(uid)'] + 1 ;
+				$query = db_insert('users')->fields(array(
+					'uid' => $last,
+				    'name' => $mail,
+				    'pass' => $password,
+				    'mail' => $mail,
+				    'status' => 1,
+				    'init' => $mail,
+				    'created'=>$_SERVER['REQUEST_TIME'],
+				    'apps'=>'',
+				))->execute();
+				
+				//inserta la cuenta "virtual" del usuario de LDAP dependiendo sus roles asignados
+				$exist = db_query("select * from {users_roles} where uid=$last AND rid=$rid")->fetchAll();
+				if(empty($exist)){
+					$query = db_insert('users_roles')->fields(array(
+						'uid' => $last,
+					    'rid' => $rid,
+					))->execute();
+				}
+				$useruid[] = $uid;
+			 }else{
+			 	$useruid[] = $uid;
+			 }
+		}
+	}
+	return $useruid;
+}
+
+/** @brief login_sso_submit()
+ * funcion para realizar logeo al SSO
+ * @param $form contiene todos los parametros de los formularios usados en el bloque
+ * @param $form_state contiene los valores del forulario alterado en este caso Login
+ * @return $user variable global con informacion del usuario logeado, 
+ * @author Sajit David Avila Correa
+ * @date 2014-11-13
+ */
+ 
+function login_sso_submit($form, &$form_state) {
+	
+	if(!empty($_SESSION['ldap_info'])){
+		require './includes/password.inc';
+		$ldap = $_SESSION['ldap_info'];
+		$password = user_hash_password(trim($ldap['pass']));
+		
+		// 3 administrador // 4 alumno // 5 profesor // 6 director // 7 contenido
+		foreach($ldap['groups_ldap'] as $ldapRol){
+			// verifica la cadena de LDAP donde tiene asignados los roles y accesos
+			$found = strpos($ldapRol, 'SSO');
+			if($found == TRUE){
+				$ldap_rol = explode(',',$ldapRol);
+				$ldap_rol = ''.$ldap_rol[0];
+				//Delimita que rol se le asignara al usuario
+				switch ($ldap_rol) {
+					case 'CN=profesor':
+						$rols = 'profesor';
+						$rid = 5;
+						break;
+					case 'CN=alumno':
+						$rols = 'alumno';
+						$rid = 4;
+						break;
+					case 'CN=admin_sso':
+						$rol = 'admin';
+						$rid = 3;
+						break;
+					case 'CN=contenido':
+						$rols = 'contenido';
+						$rid = 7;
+						break;
+					case 'CN=director':
+						$rols = 'director';
+						$rid = 6;
+						break;
+				}
+
+				$mail = $ldap['name'].'@'.$rols.'.mxsm.net';
+				$user = db_query("select * from {users}");
+				$records = $user->fetchAll();
+				$count = 0;
+				foreach($records as $c){
+					if($c->mail == $mail){
+						$count++;
+						$useruid = $c->uid;
+					}
+				}
+				
+				//verifica existencia del usuario que accesa desde LDAP
+				if($count < 1){
+					$last_id = db_query('select max(uid) from {users}')->fetchAssoc();
+					$last = $last_id['max(uid)'] + 1 ;
+					$query = db_insert('users')->fields(array(
+						'uid' => $last,
+					    'name' => $mail,
+					    'pass' => $password,
+					    'mail' => $mail,
+					    'status' => 1,
+					    'init' => $mail,
+					    'created'=>$_SERVER['REQUEST_TIME'],
+					    'apps'=>'',
+					))->execute();
+					
+					//inserta la cuenta "virtual" del usuario de LDAP dependiendo sus roles asignados
+					
+					$query = db_insert('users_roles')->fields(array(
+						'uid' => $last,
+					    'rid' => $rid,
+					))->execute();
+					
+					$useruid = $last;
+				}
+			}
+		}
+
+		$last_id = db_query('select max(uid) from {users}')->fetchAssoc();
+		$last = $last_id['max(uid)'] + 1 ;
+		$query = db_insert('users')->fields(array(
+			'uid' => $last,
+		    'name' => $ldap['name'].'@mxsm.net',
+		    'pass' => $password,
+		    'mail' => $mail,
+		    'status' => 1,
+		    'init' => $mail,
+		    'created'=>$_SERVER['REQUEST_TIME'],
+		    'apps'=>'',
+		))->execute();
+		$query = db_insert('users_roles')->fields(array(
+			'uid' => $last,
+		    'rid' => 3,
+		))->execute();
+		$useruid = $last;
+
+		global $user;
+	  	$user = user_load($useruid);
+	}
+	app_sso_user($form_state['uid']);
+}
+
+/** @brief app_sso_user()
+ * funcion para obtener las aplicaciones que pertenecen al usuario.
+ * @param $uid identificador de usuario en proceso de logeo
+ * @return actualiza el usuario en curso para asignar las aplicaciones a la variable global $user 
+ * @author Sajit David Avila Correa
+ * @date 2014-11-13
+ */
+function app_sso_user($uid){
+	$query_db = db_query('select * from {sso_user_token_app}');
+	$records = $query_db->fetchAll();
+	$var ='';
+	foreach($records as $r){
+		if($r->uid == $uid){
+			$var .= $r->id_application.','; 	
+		}
+	}
+	
+	db_update('{users}')
+		->fields(array(
+			'apps'=>$var,
+		))
+		->condition('uid',$uid)
+		->execute();
+}
+
+/** @brief user_ldap_verify()
+ * funcion para verificacion de usuario en LDAP
+ * @param $data arreglo que contiene usuario y password de usuario para verificarlo en LDAP
+ * @return $datas arreglo que contiene los datos del usuario si es que pertenece a LDAP 
+ * @author Sajit David Avila Correa
+ * @date 2014-11-13
+*/
+
+function user_ldap_verify($data,$ws=null){
+	$mensaje = array();
+	$ldapconn = ldap_connect('smx00-020.mxsm.net');
+    if($ldapconn){		
+    	$mensaje['mensaje'] = 'Se conecto correctamente al servidor';
+		$ldaprdn= $data['user'];
+		$ldappass = $data['password'];  // R295*+evJ8tJ7u7 associated password
+    	ldap_set_option($ldapconn, LDAP_OPT_PROTOCOL_VERSION, 3);
+    	ldap_set_option($ldapconn, LDAP_OPT_REFERRALS, 0);
+    	$ldapbind = ldap_bind($ldapconn,$ldaprdn,$ldappass);
+		if($ldapbind){
+			$mensaje['mensaje'] = 'Bind correcto';
+			$user = explode('@',$data['user']);
+			$filter="(CN=".$user[0].")";
+		    $result = ldap_search($ldapconn,"DC=mxsm,DC=net",$filter);
+		    ldap_sort($ldapconn, $result, "sn");
+		    $info = ldap_get_entries($ldapconn, $result);
+			$datas = array(
+				'groups_ldap'=> $info[0]['memberof'],
+				'name' => $info[0]['name'][0],
+				'userprincipalname' => $info[0]['userprincipalname'][0],
+				'mensaje' => $mensaje,
+			);
+			if($ws){
+				return $datas;
+			}
+		}else{
+			$mensaje['mensaje'] = 'no bind';
+			$datas = array(
+				'mensaje' => $mensaje,
+			);
+		}
+		
+    }else{
+    	$mensaje['mensaje'] = 'No se conecto al server';
+    	$datas = array(
+			'mensaje' => $mensaje,
+		);
+    }
+	return $datas;
+}

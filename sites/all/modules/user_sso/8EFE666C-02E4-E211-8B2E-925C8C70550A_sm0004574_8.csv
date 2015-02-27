@@ -1,0 +1,4 @@
+Nombre;ApellidoPaterno;ApellidoMaterno;Sexo;correoElectronico;Matricula;Grupo;TipoUsuario;NombreTutor1;TelefonoTutor1;OcupacionTutor1;NombreTutor2;TelefonoTutor2;OcupacionTutor2;Plataforma
+Elizabeth;Lopez;Mendoza;m;elizabeth@gmail.com;123556;1A;4;Jorge Lopez;55555555;Veterinario;;;;2
+Taiyari;Chavez;Lopez;m;taiyari@gmail.com;8765432;1A;4;Miguel Angel Chavez Obregon;50505050;Informatico;Ana Lopez Mendoza;44324234;Casa;2
+Manuel;Mendieta;Andres;h;manuel@gmail.com;754332;1A;4;Juan Mendienta;43556765;Contador;;;;2

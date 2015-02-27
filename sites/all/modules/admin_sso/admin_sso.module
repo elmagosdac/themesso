@@ -1,0 +1,158 @@
+<?php
+
+function admin_sso_help($path, $arg){
+	
+	switch($path){
+		case 'admin/config/sso/aplicaciones':
+			 return '<p>' . t("This web page allows administrators to register new users. Users' e-mail addresses and usernames must be unique.") . '</p>';
+			break;
+		case 'admin/config/sso/aplicaciones/create':
+			return '<p>' . t("This web page allows administrators to register new users. Users' e-mail addresses and usernames must be unique.") . '</p>';
+			break;
+		case 'admin/config/sso/rutas':
+			 return '<p>' . t("This web page allows administrators to register new users. Users' e-mail addresses and usernames must be unique.") . '</p>';
+			break;	
+		
+	}
+	
+}
+
+
+  /**@brief implementacion del hook menu() 
+  * funcion que implementa el menu 
+  * mediante el hook menu()
+  * @author Miguel Angel Chávez Obregón
+  * @date 2014-10-10
+  * 
+ */
+function admin_sso_menu(){
+
+
+	
+    $items['admin/config/sso']= array(
+    'title' => 'SSO',			
+    'description' => 'Configure webservers.',
+    'position' => 'left',
+    'weight' => -20,
+    'page callback' => 'drupal_get_form',
+	'access arguments' => array('administer site configuration'),
+    'file' => 'admin_sso.admin.inc',
+    'file path' => drupal_get_path('module', 'admin_sso'),
+    );
+
+		$items['admin/config/sso/comunicacion/listar']=array(
+		'title' => 'Tipo Comunicacion',
+	    'description' => 'Listado de tipo de comunicación.',
+	    'page callback' => 'drupal_get_form',
+	    'page arguments' => array('comnunication_list'),
+	    'access arguments' => array('administer comunicacion'),
+	    'file' => 'admin_sso.admin.inc',
+	    'file path' => drupal_get_path('module', 'admin_sso'),
+		);	
+	
+  $items['admin/config/sso/comunicacion/create'] = array(
+   'title' => 'Nueva comunicacion',
+   'page callback' => 'drupal_get_form',
+    'page arguments' => array('comnunication_add_form'),
+    'access arguments' => array('access arguments page'),
+    'type' => MENU_LOCAL_TASK,
+    'file' => 'admin_sso.pages.inc'
+  );	
+	
+	
+	$items['admin/config/sso/aplicaciones/listar']=array(
+	'title' => 'Aplicaciones',
+    'description' => 'Listar las aplicaciones.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('applications_list'),
+    'access arguments' => array('administer aplications'),
+    'file' => 'admin_sso.admin.inc',
+    'file path' => drupal_get_path('module', 'admin_sso'),
+	);	
+	
+  $items['admin/config/sso/aplicaciones/create'] = array(
+   'title' => 'Nueva Aplicacion',
+   'page callback' => 'drupal_get_form',
+    'page arguments' => array('applications_add_form'),
+    'access arguments' => array('access arguments page'),
+    'type' => MENU_LOCAL_TASK,
+    'file' => 'admin_sso.pages.inc'
+  );	
+  
+     $items['admin/config/sso/aplicaciones/edit/%'] = array(
+    'title' => 'Editar aplicacion',
+    'page callback' => 'applications_edit_form',
+    'page arguments' => array(5),
+    'access arguments' => array('access arguments page'),
+     'access callback' => TRUE,
+     'type' => MENU_CALLBACK,
+    'file' => 'admin_sso.pages.inc'
+  );	
+  
+  	$items['admin/config/sso/webservice/list']=array(
+	'title' => 'Webservers',
+    'description' => 'Configurar rutas de los webservers.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('webservice_list'),
+    'access arguments' => array('administer site configuration'),
+    'file' => 'admin_sso.admin.inc',
+    'file path' => drupal_get_path('module', 'admin_sso'),
+	);
+	
+	
+  $items['admin/config/sso/webservice/create'] = array(
+   'title' => 'Nueva WebService',
+   'page callback' => 'drupal_get_form',
+    'page arguments' => array('webservice_add_form'),
+    'access arguments' => array('access arguments page'),
+    'type' => MENU_LOCAL_TASK,
+    'file' => 'admin_sso.pages.inc'
+  );	
+    return $items;
+}
+
+
+function lista_application(){
+	
+	$query ='select id_application, application  from {sso_cat_applications}';
+	return $data = db_query($query);
+}
+
+
+
+function recupera_aplicacion($arg){
+	$query  = "select application, description, status, id_cat_type_communication from sso_cat_applications where id_application =".$arg;
+	$data = db_query($query)->fetchAll();
+	
+	return $data;
+}
+
+
+function lista_type_communication(){
+	
+	$query  = "select id_cat_type_communication, communication from {sso_cat_type_communication}";
+	$data = db_query($query);
+	
+	return $data;
+}
+
+function cmb_type_communication($data){
+	
+	foreach($data as $row){
+		
+		$cmb[$row->id_cat_type_communication]=t($row->communication);
+	}
+
+  return $cmb;
+	
+}
+
+function cmb_application($data){
+	
+		foreach($data as $row){
+		
+		$cmb[$row->id_application]=t($row->application);
+	}
+
+  return $cmb;
+}
